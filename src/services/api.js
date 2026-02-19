@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'https://medinexus-api-dfefgbbyc5auhncw.eastus2-01.azurewebsites.net';
+const API_BASE_URL = 'https://medinexus-api-dfefgbbyc5auhncw.eastus2-01.azurewebsites.net/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
