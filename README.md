@@ -125,7 +125,7 @@ The database has **26 normalized tables** organized into 4 clusters:
 ## Project Structure
 
 ```
-Group6_Hospital_Management_System/
+Hospital_Management_System/
 ├── hospital-client/                 # React Frontend
 │   ├── src/
 │   │   ├── components/              # Reusable UI components
@@ -220,25 +220,5 @@ The database comes pre-loaded with:
 - 5 insurance providers with 12 policies
 - 20 billing records with 15 insurance claims
 - 20 medicines with inventory, storage requirements, and supplier info
-
----
-
-## Team
-
-Built by Group 6 for DMDD (Data Management and Database Design) at Northeastern University, Fall 2025.
-
-- **Chinmay Sakhare** - Full-stack development, database design, cloud deployment
-- **Jayraj Nisal** - Database design, stored procedures
-- **Aatish Khune** - Database design, data modeling
-- **Anisha Gaikar** - Database design, views and functions
-- **Tejas Tadla** - Database design, triggers and indexes
-
----
-
-## License
-
-MIT
-
----
 
 Built at [Northeastern University](https://www.northeastern.edu/) | Deployed on [Azure](https://azure.microsoft.com/) + [Netlify](https://www.netlify.com/)
