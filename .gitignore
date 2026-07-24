@@ -1,0 +1,50 @@
+# ===========================
+# .NET Backend
+# ===========================
+Backend/bin/
+Backend/obj/
+Backend/deploy/
+Backend/publish/
+*.dll
+*.exe
+*.pdb
+*.so
+*.dylib
+
+# ===========================
+# Frontend (Node/React)
+# ===========================
+node_modules/
+dist/
+build/
+.vite/
+
+# ===========================
+# Environment & Secrets
+# ===========================
+appsettings.Development.json
+.env
+.env.local
+.env.production
+
+# ===========================
+# IDE & OS
+# ===========================
+.vs/
+.vscode/
+*.user
+.DS_Store
+Thumbs.db
+
+# ===========================
+# Logs
+# ===========================
+*.log
+logs/
+
+# ===========================
+# Private deployment notes
+# ===========================
+ISSUES_ENCOUNTERED.md
+# Claude Code local settings
+.claude/
