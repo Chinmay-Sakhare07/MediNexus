@@ -12,6 +12,59 @@ const api = axios.create({
   },
 });
 
+// Attach the JWT to every request.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('mn_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Cold-start resilience (free hosting): retry idempotent GETs when the
+// server is asleep (network error / 502 / 503 / 504), and tell the UI so it
+// can show a "waking up" banner (Layout listens for this event).
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error?.config;
+    const status = error?.response?.status;
+    const isGet = (config?.method || '').toLowerCase() === 'get';
+    const coldStart = !error?.response || [502, 503, 504].includes(status);
+
+    if (isGet && coldStart && config && (config.__retryCount || 0) < 2) {
+      config.__retryCount = (config.__retryCount || 0) + 1;
+      window.dispatchEvent(new CustomEvent('mn:server-waking'));
+      await sleep(4000 * config.__retryCount);
+      return api(config);
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Expired/invalid token -> clear session and return to login.
+// (Skip for the login call itself so bad credentials show inline.)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const url = error?.config?.url || '';
+    if (status === 401 && !url.includes('/auth/login')) {
+      localStorage.removeItem('mn_token');
+      localStorage.removeItem('mn_user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Auth
+export const login = (credentials) => api.post('/auth/login', credentials);
+export const getMe = () => api.get('/auth/me');
+export const changePassword = (data) => api.post('/auth/change-password', data);
+
 // Dashboard
 export const getDashboard = () => api.get('/dashboard');
 
@@ -19,6 +72,7 @@ export const getDashboard = () => api.get('/dashboard');
 export const getPatients = () => api.get('/patients');
 export const getPatient = (id) => api.get(`/patients/${id}`);
 export const registerPatient = (data) => api.post('/patients', data);
+export const updatePatient = (id, data) => api.put(`/patients/${id}`, data);
 export const deletePatient = (id) => api.delete(`/patients/${id}`);
 
 // Doctors
