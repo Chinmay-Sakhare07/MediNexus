@@ -286,3 +286,59 @@ public class ImpersonateValidator : AbstractValidator<ImpersonateRequest>
         RuleFor(x => x.UserId).GreaterThan(0);
     }
 }
+
+// ---- User administration (CRUD with soft deletion) ----
+
+public class CreateUserValidator : AbstractValidator<CreateUserRequest>
+{
+    private static readonly string[] ValidRoles =
+        { "Admin", "Doctor", "Nurse", "LabTech", "Pharmacist", "Receptionist", "Patient" };
+
+    public CreateUserValidator()
+    {
+        RuleFor(x => x.Username).NotEmpty().Length(3, 50)
+            .Matches("^[a-zA-Z0-9._-]+$")
+            .WithMessage("Username may contain letters, digits, dots, dashes and underscores");
+        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(100);
+        RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(100);
+        RuleFor(x => x.Role).Must(r => ValidRoles.Contains(r))
+            .WithMessage("Role must be one of: " + string.Join(", ", ValidRoles));
+        RuleFor(x => x)
+            .Must(x => !(x.StaffId.HasValue && x.PatientId.HasValue))
+            .WithMessage("A user links to a staff member or a patient, not both")
+            .OverridePropertyName("StaffId");
+        // Row-level security depends on these links: without them a Doctor or
+        // LabTech would scope to nothing (or everything). Patients need their row.
+        RuleFor(x => x.StaffId).NotNull()
+            .When(x => x.Role == "Doctor" || x.Role == "LabTech")
+            .WithMessage("Doctor and LabTech accounts must link to a staff record (StaffId)");
+        RuleFor(x => x.PatientId).NotNull()
+            .When(x => x.Role == "Patient")
+            .WithMessage("Patient accounts must link to a patient record (PatientId)");
+    }
+}
+
+public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
+{
+    private static readonly string[] ValidRoles =
+        { "Admin", "Doctor", "Nurse", "LabTech", "Pharmacist", "Receptionist", "Patient" };
+
+    public UpdateUserValidator()
+    {
+        RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(100);
+        RuleFor(x => x.Role).Must(r => ValidRoles.Contains(r))
+            .WithMessage("Role must be one of: " + string.Join(", ", ValidRoles));
+        RuleFor(x => x)
+            .Must(x => !(x.StaffId.HasValue && x.PatientId.HasValue))
+            .WithMessage("A user links to a staff member or a patient, not both")
+            .OverridePropertyName("StaffId");
+        RuleFor(x => x.StaffId).NotNull()
+            .When(x => x.Role == "Doctor" || x.Role == "LabTech")
+            .WithMessage("Doctor and LabTech accounts must link to a staff record (StaffId)");
+        RuleFor(x => x.PatientId).NotNull()
+            .When(x => x.Role == "Patient")
+            .WithMessage("Patient accounts must link to a patient record (PatientId)");
+        RuleFor(x => x.NewPassword).MinimumLength(8).MaximumLength(100)
+            .When(x => !string.IsNullOrEmpty(x.NewPassword));
+    }
+}

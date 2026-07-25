@@ -24,6 +24,7 @@ export const MODULE_ROLES = {
   lab: ['Admin', 'LabTech'],
   pharmacy: ['Admin', 'Pharmacist'],
   schedule: ['Admin', 'Doctor'],
+  users: ['Admin'],
 };
 
 export const canAccess = (role, module) =>

@@ -140,4 +140,11 @@ export const removeDoctorLeave = (doctorId, leaveId) => api.delete(`/doctors/${d
 export const getSwitchTargets = () => api.get('/auth/users');
 export const impersonateUser = (userId) => api.post('/auth/impersonate', { userId });
 
+// User administration (Admin)
+export const getUsers = (includeInactive = false) => api.get('/users', { params: { includeInactive } });
+export const createUser = (data) => api.post('/users', data);
+export const updateUser = (id, data) => api.put(`/users/${id}`, data);
+export const deactivateUser = (id) => api.delete(`/users/${id}`);
+export const reactivateUser = (id) => api.put(`/users/${id}/activate`);
+
 export default api;

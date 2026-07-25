@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, DollarSign, Stethoscope, Shield,
-  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch,
+  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch, UserCog,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../auth/permissions';
@@ -18,6 +18,7 @@ const MENU = [
   { path: '/lab', module: 'lab', icon: FlaskConical, label: 'Lab' },
   { path: '/pharmacy', module: 'pharmacy', icon: Pill, label: 'Pharmacy' },
   { path: '/schedule', module: 'schedule', icon: CalendarClock, label: 'My Schedule' },
+  { path: '/users', module: 'users', icon: UserCog, label: 'Users' },
 ];
 
 export default function Sidebar() {

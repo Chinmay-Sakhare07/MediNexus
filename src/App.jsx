@@ -12,6 +12,7 @@ import File from './pages/File';
 import Pharmacy from './pages/Pharmacy';
 import Lab from './pages/Lab';
 import Schedule from './pages/Schedule';
+import UsersAdmin from './pages/UsersAdmin';
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             <Route path="/lab" element={<RequireModule module="lab"><Lab /></RequireModule>} />
             <Route path="/pharmacy" element={<RequireModule module="pharmacy"><Pharmacy /></RequireModule>} />
             <Route path="/schedule" element={<RequireModule module="schedule"><Schedule /></RequireModule>} />
+            <Route path="/users" element={<RequireModule module="users"><UsersAdmin /></RequireModule>} />
           </Route>
         </Routes>
       </Router>

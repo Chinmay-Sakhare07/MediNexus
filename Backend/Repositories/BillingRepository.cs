@@ -11,10 +11,12 @@ namespace HospitalManagement.API.Repositories;
 public class BillingRepository : IBillingRepository
 {
     private readonly string _connectionString;
+    private readonly ILogger<BillingRepository> _logger;
 
-    public BillingRepository(IConfiguration configuration)
+    public BillingRepository(IConfiguration configuration, ILogger<BillingRepository> logger)
     {
         _connectionString = configuration.GetConnectionString("HospitalDb")!;
+        _logger = logger;
     }
 
     public async Task<IEnumerable<BillingDto>> GetAllAsync()
@@ -191,11 +193,20 @@ public class BillingRepository : IBillingRepository
                 new { PatientId = patientId, TodayIst = todayIst },
                 transaction);
 
-            if (insurance != null)
+            if (insurance == null)
             {
-                var copayPercentage = (decimal)insurance.CopayPercentage;
+                // The telltale for "why didn't insurance apply": logged, human-tone.
+                _logger.LogWarning(
+                    "No in-force primary insurance for patient #{PatientId} on the billing date — bill issued without a claim",
+                    patientId);
+            }
+
+            decimal? copayNullable = insurance?.CopayPercentage;
+            if (insurance != null && copayNullable.HasValue)
+            {
+                var copayPercentage = copayNullable.Value;
                 var insurancePercentage = (100 - copayPercentage) / 100;
-                var amountCovered = totalAmount * insurancePercentage;
+                var amountCovered = Math.Round(totalAmount * insurancePercentage, 2);
 
                 var claimSql = @"
                     INSERT INTO CLAIM (
