@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { canScheduleAppointments, canCompleteAppointments, canConsult, canRequestAppointment } from '../auth/permissions';
+import { nextStepForStatus } from '../utils/pending';
 import { formatIstDateTime, formatIstTime } from '../utils/datetime';
 import { useState, useEffect } from 'react';
 import { Plus, Calendar as CalendarIcon, Check, X, DollarSign, Filter, CheckCheck, DoorOpen, Stethoscope, FolderOpen } from 'lucide-react';
@@ -298,7 +299,7 @@ export default function Appointments() {
         {(canSchedule || isPatient) && (
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 mn-btn mn-btn-primary"
         >
           <Plus className="w-5 h-5" />
           {isPatient ? 'Request Appointment' : 'Schedule Appointment'}
@@ -307,7 +308,7 @@ export default function Appointments() {
       </div>
 
       {/* Date Filter */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="mn-card p-6 mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-5 h-5 text-gray-600" />
           <h3 className="font-medium text-gray-800">Filter by Date</h3>
@@ -367,7 +368,7 @@ export default function Appointments() {
       </div>
 
       {/* Appointments Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="mn-card overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
@@ -392,6 +393,9 @@ export default function Appointments() {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
                     {appointment.status}
                   </span>
+                      {nextStepForStatus(appointment.status) && (
+                        <div className="text-xs text-gray-500 mt-1">{nextStepForStatus(appointment.status)}</div>
+                      )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
@@ -559,7 +563,7 @@ export default function Appointments() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-2 mn-btn mn-btn-primary"
                 >
                   Schedule
                 </button>
@@ -720,7 +724,7 @@ export default function Appointments() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                  className="px-6 py-2 mn-btn mn-btn-ok flex items-center gap-2"
                 >
                   <Check className="w-5 h-5" />
                   Complete & Generate Bill

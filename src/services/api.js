@@ -136,4 +136,8 @@ export const getDoctorLeaves = (doctorId) => api.get(`/doctors/${doctorId}/leave
 export const addDoctorLeave = (doctorId, data) => api.post(`/doctors/${doctorId}/leaves`, data);
 export const removeDoctorLeave = (doctorId, leaveId) => api.delete(`/doctors/${doctorId}/leaves/${leaveId}`);
 
+// Admin account switching
+export const getSwitchTargets = () => api.get('/auth/users');
+export const impersonateUser = (userId) => api.post('/auth/impersonate', { userId });
+
 export default api;

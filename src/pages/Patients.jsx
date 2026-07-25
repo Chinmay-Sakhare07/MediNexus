@@ -132,7 +132,7 @@ export default function Patients() {
         {canManage && (
         <button
           onClick={() => { setEditingId(null); setFormData(emptyForm); setShowModal(true); }}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 mn-btn mn-btn-primary"
         >
           <Plus className="w-5 h-5" />
           Register Patient
@@ -140,7 +140,7 @@ export default function Patients() {
         )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="mn-card p-6 mb-6">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
@@ -153,7 +153,7 @@ export default function Patients() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="mn-card overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
             <tr>
@@ -369,7 +369,7 @@ export default function Patients() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-2 mn-btn mn-btn-primary"
                 >
                   {editingId ? 'Save Changes' : 'Register Patient'}
                 </button>

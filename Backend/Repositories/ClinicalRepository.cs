@@ -32,7 +32,7 @@ public class ClinicalRepository : IClinicalRepository
             INNER JOIN STAFF s ON d.DoctorID = s.StaffID
             WHERE a.AppointmentID = @Id;
 
-            SELECT al.AllergyName
+            SELECT al.Name
             FROM PATIENT_ALLERGY pa
             INNER JOIN ALLERGY al ON pa.AllergyID = al.AllergyID
             INNER JOIN APPOINTMENT a ON a.PatientID = pa.PatientID

@@ -8,7 +8,7 @@ namespace HospitalManagement.API.Services;
 
 public interface ITokenService
 {
-    (string Token, DateTime ExpiresAtUtc) CreateToken(UserAccountRecord user);
+    (string Token, DateTime ExpiresAtUtc) CreateToken(UserAccountRecord user, string? impersonatedBy = null);
 }
 
 public class TokenService : ITokenService
@@ -26,7 +26,7 @@ public class TokenService : ITokenService
         _expiryHours = int.TryParse(config["Jwt:ExpiryHours"], out var h) ? h : 8;
     }
 
-    public (string Token, DateTime ExpiresAtUtc) CreateToken(UserAccountRecord user)
+    public (string Token, DateTime ExpiresAtUtc) CreateToken(UserAccountRecord user, string? impersonatedBy = null)
     {
         var claims = new List<Claim>
         {
@@ -37,6 +37,7 @@ public class TokenService : ITokenService
         };
         if (user.StaffID.HasValue)   claims.Add(new Claim("staffId", user.StaffID.Value.ToString()));
         if (user.PatientID.HasValue) claims.Add(new Claim("patientId", user.PatientID.Value.ToString()));
+        if (!string.IsNullOrEmpty(impersonatedBy)) claims.Add(new Claim("impersonatedBy", impersonatedBy));
 
         var expires = DateTime.UtcNow.AddHours(_expiryHours);
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secret));

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HospitalManagement.API.Models.Requests;
 using Microsoft.AspNetCore.RateLimiting;
 using HospitalManagement.API.Auth;
 using HospitalManagement.API.Models;
@@ -129,5 +130,50 @@ public class AuthController : ControllerBase
         _logger.LogWarning("LOGIN_FAILED username={Username} reason={Reason} ip={Ip}",
             login, reason, HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
         return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse("Invalid username or password"));
+    }
+
+    /// <summary>Accounts an admin can switch into (active, non-admin).</summary>
+    [HttpGet("users")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<AuthUserDto>>>> GetSwitchTargets()
+    {
+        var users = await _users.GetSwitchTargetsAsync();
+        return Ok(ApiResponse<IEnumerable<AuthUserDto>>.SuccessResponse(users));
+    }
+
+    /// <summary>
+    /// Admin account switching: issues a token for the target user carrying an
+    /// impersonatedBy claim. Admins cannot impersonate other admins. Audited.
+    /// </summary>
+    [HttpPost("impersonate")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<ApiResponse<LoginResponse>>> Impersonate([FromBody] ImpersonateRequest request)
+    {
+        var target = await _users.GetByIdAsync(request.UserId);
+        if (target == null || !target.IsActive)
+            return NotFound(ApiResponse<LoginResponse>.ErrorResponse("User not found or inactive"));
+        if (target.Role == Roles.Admin)
+            return BadRequest(ApiResponse<LoginResponse>.ErrorResponse("Admins cannot view as other admins"));
+
+        var adminName = User.GetUsername() ?? "admin";
+        var (token, expiresAtUtc) = _tokens.CreateToken(target, impersonatedBy: adminName);
+
+        _logger.LogWarning("Admin {Admin} started viewing as {Target} ({Role})",
+            adminName, target.Username, target.Role);
+
+        return Ok(ApiResponse<LoginResponse>.SuccessResponse(new LoginResponse
+        {
+            Token = token,
+            ExpiresAtUtc = expiresAtUtc,
+            User = new AuthUserDto
+            {
+                UserId = target.UserID,
+                Username = target.Username,
+                DisplayName = target.DisplayName,
+                Role = target.Role,
+                StaffId = target.StaffID,
+                PatientId = target.PatientID
+            }
+        }, $"Now viewing as {target.DisplayName}"));
     }
 }

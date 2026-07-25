@@ -75,12 +75,12 @@ export default function Schedule() {
 
       {form && doctorId && (
         <>
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="mn-card p-6 mb-6">
             <h2 className="font-semibold text-gray-800 mb-4">Weekly pattern</h2>
             <div className="flex gap-2 mb-4 flex-wrap">
               {DAYS.map((d) => (
                 <button key={d} onClick={() => toggleDay(d)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium ${form.workDays.includes(d) ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium ${form.workDays.includes(d) ? 'mn-tab-active' : 'mn-tab'}`}>
                   {d}
                 </button>
               ))}
@@ -101,13 +101,13 @@ export default function Schedule() {
               </label>
             </div>
             <button onClick={saveSchedule} disabled={form.workDays.length === 0}
-              className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm hover:bg-blue-700 disabled:opacity-50">
+              className="mn-btn mn-btn-primary mn-btn-sm">
               Save schedule
             </button>
             <p className="text-xs text-gray-400 mt-2">All times are hospital time (IST). Booked slots stay honored; the pattern shapes future availability.</p>
           </div>
 
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="mn-card p-6">
             <h2 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <CalendarOff className="w-5 h-5 text-amber-600" /> Leave
             </h2>

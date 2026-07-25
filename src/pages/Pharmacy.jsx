@@ -53,14 +53,14 @@ export default function Pharmacy() {
       <div className="flex gap-2 mb-6">
         {[['queue', 'Prescription queue'], ['inventory', 'Inventory']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === k ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 shadow-sm hover:bg-gray-50'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${tab === k ? 'mn-tab-active' : 'mn-tab'}`}>
             {label}
           </button>
         ))}
       </div>
 
       {tab === 'queue' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="mn-card overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
               <tr>
@@ -122,7 +122,7 @@ export default function Pharmacy() {
       )}
 
       {tab === 'inventory' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="mn-card overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
               <tr>

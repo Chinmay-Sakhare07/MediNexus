@@ -1,15 +1,12 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  DollarSign,
-  Stethoscope,
-  Shield,
-  Activity,
-  LogOut, FlaskConical, Pill, CalendarClock } from 'lucide-react';
+  LayoutDashboard, Users, Calendar, DollarSign, Stethoscope, Shield,
+  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../auth/permissions';
+import { getSwitchTargets } from '../../services/api';
 
 const MENU = [
   { path: '/', module: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -18,68 +15,125 @@ const MENU = [
   { path: '/insurance', module: 'insurance', icon: Shield, label: 'Insurance' },
   { path: '/appointments', module: 'appointments', icon: Calendar, label: 'Appointments' },
   { path: '/billing', module: 'billing', icon: DollarSign, label: 'Billing' },
-  { path: '/lab', label: 'Lab', module: 'lab', icon: FlaskConical },
-  { path: '/pharmacy', label: 'Pharmacy', module: 'pharmacy', icon: Pill },
-  { path: '/schedule', label: 'My Schedule', module: 'schedule', icon: CalendarClock },
+  { path: '/lab', module: 'lab', icon: FlaskConical, label: 'Lab' },
+  { path: '/pharmacy', module: 'pharmacy', icon: Pill, label: 'Pharmacy' },
+  { path: '/schedule', module: 'schedule', icon: CalendarClock, label: 'My Schedule' },
 ];
 
 export default function Sidebar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, impersonate, isImpersonating } = useAuth();
+  const [targets, setTargets] = useState([]);
+  const [switching, setSwitching] = useState(false);
+
+  const isAdmin = user?.role === 'Admin';
+
+  useEffect(() => {
+    if (isAdmin && !isImpersonating) {
+      getSwitchTargets()
+        .then((res) => setTargets(res.data?.data || []))
+        .catch(() => setTargets([]));
+    }
+  }, [isAdmin, isImpersonating]);
+
+  const handleSwitch = async (e) => {
+    const userId = Number(e.target.value);
+    if (!userId) return;
+    setSwitching(true);
+    try {
+      await impersonate(userId);
+      window.location.href = '/';
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Could not switch account');
+      setSwitching(false);
+    }
+  };
 
   const visibleItems = MENU.filter((item) => user && canAccess(user.role, item.module));
 
   return (
-    <div className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 text-white h-screen fixed left-0 top-0 shadow-xl flex flex-col">
-      <div className="p-6 border-b border-blue-700">
+    <div
+      className="w-64 h-screen fixed left-0 top-0 flex flex-col"
+      style={{ background: 'var(--mn-ink-2)', borderRight: '1px solid #2A3138' }}
+    >
+      <div className="p-6" style={{ borderBottom: '1px solid #2A3138' }}>
         <div className="flex items-center gap-3">
-          <Activity className="w-10 h-10 text-blue-300" />
+          <div style={{ background: 'var(--mn-teal)', padding: 8 }}>
+            <Activity className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold">Group Six</h1>
-            <p className="text-xs text-blue-300">Multispeciality Hospital</p>
+            <h1 className="text-lg font-bold text-white tracking-tight">MediNexus</h1>
+            <p className="mn-kicker" style={{ color: '#8B949C' }}>Group Six Hospital</p>
           </div>
         </div>
       </div>
 
-      <nav className="mt-6 flex-1 overflow-y-auto">
+      <nav className="mt-4 flex-1 overflow-y-auto">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = location.pathname === item.path;
-
           return (
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-6 py-3 transition-all ${
-                isActive
-                  ? 'bg-blue-700 border-r-4 border-blue-300 text-white'
-                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-              }`}
+              className="flex items-center gap-3 px-6 py-3 transition-colors"
+              style={{
+                color: isActive ? '#FFFFFF' : '#9AA3AB',
+                background: isActive ? 'rgba(14,110,104,0.22)' : 'transparent',
+                borderLeft: isActive ? '3px solid var(--mn-teal)' : '3px solid transparent',
+              }}
+              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.color = '#E8EAEC'; }}
+              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.color = '#9AA3AB'; }}
             >
               <Icon className="w-5 h-5" />
-              <span className="font-medium">{item.label}</span>
+              <span className="font-medium text-sm">{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-blue-700">
+      {isAdmin && !isImpersonating && (
+        <div className="px-4 pb-3">
+          <p className="mn-kicker mb-1" style={{ color: '#8B949C' }}>
+            <UserRoundSearch className="w-3 h-3 inline mr-1" />
+            View as
+          </p>
+          <select
+            onChange={handleSwitch}
+            disabled={switching}
+            defaultValue=""
+            className="w-full text-sm px-2 py-2"
+            style={{ background: '#262C32', color: '#E8EAEC', border: '1px solid #2A3138', borderRadius: 2 }}
+          >
+            <option value="">{switching ? 'Switching…' : 'Choose an account…'}</option>
+            {targets.map((t) => (
+              <option key={t.userId} value={t.userId}>
+                {t.displayName} — {t.role}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="p-4" style={{ borderTop: '1px solid #2A3138' }}>
         {user && (
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{user.displayName || user.username}</p>
-              <p className="text-xs text-blue-300">{user.role}</p>
+              <p className="text-sm font-medium truncate text-white">{user.displayName || user.username}</p>
+              <p className="mn-kicker" style={{ color: 'var(--mn-teal)', filter: 'brightness(1.6)' }}>{user.role}</p>
             </div>
             <button
               onClick={logout}
               title="Sign out"
-              className="p-2 rounded-lg text-blue-200 hover:bg-blue-700 hover:text-white transition-colors"
+              className="p-2 transition-colors"
+              style={{ color: '#9AA3AB', borderRadius: 2 }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = '#262C32'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#9AA3AB'; e.currentTarget.style.background = 'transparent'; }}
             >
               <LogOut className="w-5 h-5" />
             </button>
           </div>
         )}
-        <p className="text-[10px] text-blue-400 text-center mt-3">© 2025 Project by Team Six</p>
       </div>
     </div>
   );

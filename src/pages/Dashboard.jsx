@@ -40,7 +40,7 @@ export default function Dashboard() {
         {cards.map((card) => {
           const Icon = card.icon;
           return (
-            <div key={card.title} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+            <div key={card.title} className="mn-card p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-sm">{card.title}</p>
@@ -55,7 +55,7 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="mn-card p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Revenue Overview</h2>
         <div className="text-center py-8">
           <p className="text-gray-500 mb-2">Total Revenue</p>

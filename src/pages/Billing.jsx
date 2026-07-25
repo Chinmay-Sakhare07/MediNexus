@@ -80,7 +80,7 @@ export default function Billing() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mn-card p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Pending Bills</p>
@@ -90,7 +90,7 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mn-card p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Paid Bills</p>
@@ -100,7 +100,7 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mn-card p-6">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Total Outstanding</p>
@@ -117,7 +117,7 @@ export default function Billing() {
       {pendingBills.length > 0 && (
         <div className="mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Bills Requiring Payment</h2>
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="mn-card overflow-hidden">
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
@@ -164,7 +164,7 @@ export default function Billing() {
                       {canPay && (
                       <button
                         onClick={() => openPaymentModal(bill)}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                        className="flex items-center gap-2 px-4 py-2 mn-btn mn-btn-ok text-sm"
                       >
                         <CreditCard className="w-4 h-4" />
                         Pay
@@ -182,7 +182,7 @@ export default function Billing() {
       {/* All Bills Section */}
       <div>
         <h2 className="text-xl font-bold text-gray-800 mb-4">All Bills</h2>
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="mn-card overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -314,7 +314,7 @@ export default function Billing() {
                   Cancel
                 </button>
                 <button type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                  className="px-6 py-2 mn-btn mn-btn-ok">
                   Take payment
                 </button>
               </div>

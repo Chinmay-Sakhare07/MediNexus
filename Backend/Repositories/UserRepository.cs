@@ -62,4 +62,45 @@ public class UserRepository : IUserRepository
             new { Hash = newHash, UserId = userId });
         return affected > 0;
     }
+
+    public async Task<UserAccountRecord?> GetByIdAsync(int userId)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        var sql = @"
+            SELECT
+                u.UserID, u.Username, u.Email, u.PasswordHash, u.Role,
+                u.StaffID, u.PatientID, u.IsActive,
+                COALESCE(
+                    CONCAT(s.FirstName, ' ', s.LastName),
+                    CONCAT(p.FirstName, ' ', p.LastName),
+                    u.Username
+                ) AS DisplayName
+            FROM USER_ACCOUNT u
+            LEFT JOIN STAFF   s ON u.StaffID   = s.StaffID
+            LEFT JOIN PATIENT p ON u.PatientID = p.PatientID
+            WHERE u.UserID = @UserId
+            LIMIT 1";
+        return await connection.QuerySingleOrDefaultAsync<UserAccountRecord>(sql, new { UserId = userId });
+    }
+
+    // Everyone an admin may view as: active, non-admin accounts.
+    public async Task<IEnumerable<AuthUserDto>> GetSwitchTargetsAsync()
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        var sql = @"
+            SELECT
+                u.UserID as UserId, u.Username, u.Role,
+                u.StaffID as StaffId, u.PatientID as PatientId,
+                COALESCE(
+                    CONCAT(s.FirstName, ' ', s.LastName),
+                    CONCAT(p.FirstName, ' ', p.LastName),
+                    u.Username
+                ) AS DisplayName
+            FROM USER_ACCOUNT u
+            LEFT JOIN STAFF   s ON u.StaffID   = s.StaffID
+            LEFT JOIN PATIENT p ON u.PatientID = p.PatientID
+            WHERE u.IsActive = 1 AND u.Role <> 'Admin'
+            ORDER BY u.Role, DisplayName";
+        return await connection.QueryAsync<AuthUserDto>(sql);
+    }
 }

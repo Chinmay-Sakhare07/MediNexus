@@ -103,7 +103,7 @@ export default function Insurance() {
         {canManage && (
         <button
           onClick={() => setShowAssignModal(true)}
-          className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          className="flex items-center gap-2 mn-btn mn-btn-primary"
         >
           <Plus className="w-5 h-5" />
           Assign Insurance
@@ -113,7 +113,7 @@ export default function Insurance() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Insurance Providers */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mn-card p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Insurance Providers</h2>
           <div className="space-y-3">
             {providers.map(provider => (
@@ -129,7 +129,7 @@ export default function Insurance() {
         </div>
 
         {/* Patient Insurance Lookup */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="mn-card p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Patient Insurance Lookup</h2>
           <select
             value={selectedPatient || ''}
@@ -181,7 +181,7 @@ export default function Insurance() {
       </div>
 
       {/* Available Policies */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="mn-card p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Available Insurance Policies</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -273,7 +273,7 @@ export default function Insurance() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-2 mn-btn mn-btn-primary"
                 >
                   Assign Insurance
                 </button>

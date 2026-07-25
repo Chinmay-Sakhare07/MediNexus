@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { pendingActions } from '../utils/pending';
 import { AlertTriangle, ArrowLeft, FlaskConical, Pill, Stethoscope, HeartPulse, ReceiptText } from 'lucide-react';
 import { getFile, recordVitals, saveConsultation, orderLabTests, createPrescription, getMedicines } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -75,7 +76,7 @@ export default function File() {
         <ArrowLeft className="w-4 h-4" /> Appointments
       </Link>
 
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div id="top" className="mn-card p-6 mb-6">
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">{file.patientName}</h1>
@@ -95,7 +96,23 @@ export default function File() {
       </div>
 
       {/* Vitals */}
-      <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+      {/* What exactly is pending on this visit — clickable, derived live */}
+      <div className="mn-card mn-accent p-4 mb-6">
+        <p className="mn-kicker mb-2">Pending on this visit</p>
+        <div className="flex flex-wrap gap-2">
+          {pendingActions(file).map((a, i) => (
+            <button
+              key={i}
+              onClick={() => document.getElementById(a.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              className="mn-btn mn-btn-quiet mn-btn-sm"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <section id="vitals" className="mn-card p-6 mb-6">
         <h2 className="flex items-center gap-2 font-semibold text-gray-800 mb-3"><HeartPulse className="w-5 h-5 text-rose-600" /> Vitals</h2>
         {file.record?.vitalSigns
           ? <p className="text-gray-700 text-sm mb-3">{file.record.vitalSigns}</p>
@@ -116,7 +133,7 @@ export default function File() {
       </section>
 
       {/* Consultation */}
-      <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <section id="consult" className="mn-card p-6 mb-6">
         <h2 className="flex items-center gap-2 font-semibold text-gray-800 mb-3"><Stethoscope className="w-5 h-5 text-blue-600" /> Consultation</h2>
         {isDoctor && canConsult(user?.role) && canEditClinically ? (
           <div className="space-y-3">
@@ -135,7 +152,7 @@ export default function File() {
               Follow-up required
             </label>
             <button onClick={submitConsult} disabled={!!busy || !consult.diagnosis.trim()}
-              className="bg-blue-600 text-white rounded-lg px-5 py-2 text-sm hover:bg-blue-700 disabled:opacity-50">
+              className="mn-btn mn-btn-primary mn-btn-sm">
               {busy === 'save consultation' ? 'Saving…' : 'Save consultation'}
             </button>
           </div>
@@ -150,7 +167,7 @@ export default function File() {
       </section>
 
       {/* Lab tests */}
-      <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <section id="labs" className="mn-card p-6 mb-6">
         <h2 className="flex items-center gap-2 font-semibold text-gray-800 mb-3"><FlaskConical className="w-5 h-5 text-violet-600" /> Lab tests</h2>
         {file.labTests.length > 0 && (
           <table className="w-full text-sm mb-4">
@@ -199,7 +216,7 @@ export default function File() {
       </section>
 
       {/* Prescription */}
-      <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <section id="prescription" className="mn-card p-6 mb-6">
         <h2 className="flex items-center gap-2 font-semibold text-gray-800 mb-3"><Pill className="w-5 h-5 text-emerald-600" /> Prescription</h2>
         {file.prescription ? (
           <div className="text-sm">
@@ -261,7 +278,7 @@ export default function File() {
       </section>
 
       {/* Bills */}
-      <section className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <section id="bills" className="mn-card p-6 mb-6">
         <h2 className="flex items-center gap-2 font-semibold text-gray-800 mb-3"><ReceiptText className="w-5 h-5 text-gray-600" /> Bills</h2>
         {file.bills.length === 0 ? <p className="text-gray-400 text-sm">No bills yet.</p> : (
           <table className="w-full text-sm">

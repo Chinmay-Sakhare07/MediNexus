@@ -32,7 +32,7 @@ export default function Lab() {
         <FlaskConical className="w-7 h-7 text-violet-600" /> Lab work queue
       </h1>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="mn-card overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 text-left text-xs text-gray-500 uppercase">
             <tr>

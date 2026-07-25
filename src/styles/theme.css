@@ -1,0 +1,152 @@
+/* ============================================================
+   MediNexus — "Clinical Modernism"
+   Warm paper, ink charcoal, one deep teal, restrained amber.
+   Squared corners (2px), rules instead of shadows, tabular
+   numerals for the data the hospital lives on. Handcrafted
+   hover states: weight, underline offset, border shifts.
+   ============================================================ */
+
+:root {
+  --mn-paper:      #F7F5F1;
+  --mn-paper-deep: #EFECE4;
+  --mn-surface:    #FFFFFF;
+  --mn-ink:        #20262B;
+  --mn-ink-2:      #1B2025;
+  --mn-ink-soft:   #5A6169;
+  --mn-rule:       #D8D3C9;
+  --mn-teal:       #0E6E68;
+  --mn-teal-deep:  #0A514C;
+  --mn-teal-wash:  #E2EEEC;
+  --mn-amber:      #B0791E;
+  --mn-amber-wash: #F6EBD8;
+  --mn-brick:      #A4402F;
+  --mn-brick-deep: #86321F;
+  --mn-ok:         #3F7A50;
+  --mn-ok-deep:    #35673F;
+}
+
+body {
+  background: var(--mn-paper);
+  color: var(--mn-ink);
+}
+
+h1, h2, h3 { color: var(--mn-ink); letter-spacing: -0.01em; }
+
+.mn-kicker {
+  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--mn-ink-soft); font-weight: 600;
+}
+
+/* ---- Surfaces: bordered planes, not floating cards ---- */
+.mn-card {
+  background: var(--mn-surface);
+  border: 1px solid var(--mn-rule);
+  border-radius: 2px;
+  transition: border-color 0.15s ease;
+}
+.mn-card:hover { border-color: #C2BCB0; }
+.mn-accent { border-left: 3px solid var(--mn-teal); }
+
+/* ---- Buttons ---- */
+.mn-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.55rem 1.15rem; border-radius: 2px; border: 1px solid transparent;
+  font-weight: 600; font-size: 0.875rem; letter-spacing: 0.01em; cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.mn-btn:active { transform: translateY(1px); }
+.mn-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mn-btn-sm { padding: 0.35rem 0.8rem; font-size: 0.8rem; }
+
+.mn-btn-primary { background: var(--mn-teal); color: #fff; border-color: var(--mn-teal-deep); }
+.mn-btn-primary:hover { background: var(--mn-teal-deep); box-shadow: inset 0 -2px 0 rgba(0,0,0,0.2); }
+
+.mn-btn-quiet { background: transparent; color: var(--mn-ink); border-color: var(--mn-rule); }
+.mn-btn-quiet:hover { border-color: var(--mn-ink-soft); background: var(--mn-paper-deep); }
+
+.mn-btn-danger { background: var(--mn-brick); color: #fff; border-color: var(--mn-brick-deep); }
+.mn-btn-danger:hover { background: var(--mn-brick-deep); }
+
+.mn-btn-ok { background: var(--mn-ok); color: #fff; border-color: var(--mn-ok-deep); }
+.mn-btn-ok:hover { background: var(--mn-ok-deep); }
+
+/* ---- Links ---- */
+.mn-link, a.mn-link {
+  color: var(--mn-teal); text-decoration: underline; text-underline-offset: 2px;
+  transition: text-underline-offset 0.12s ease, color 0.12s ease;
+}
+.mn-link:hover { color: var(--mn-teal-deep); text-underline-offset: 4px; }
+
+/* ---- Tabs: an underline that means it, not a pill ---- */
+.mn-tab, .mn-tab-active {
+  padding: 0.5rem 1rem; background: transparent; border: none;
+  border-bottom: 2px solid transparent; font-weight: 600; font-size: 0.9rem;
+  color: var(--mn-ink-soft); cursor: pointer; border-radius: 0;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.mn-tab:hover { color: var(--mn-ink); }
+.mn-tab-active { color: var(--mn-teal-deep); border-bottom-color: var(--mn-teal); }
+
+/* ---- Data ---- */
+.mn-scope table { font-variant-numeric: tabular-nums; }
+.mn-scope thead th {
+  font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--mn-ink-soft);
+}
+.mn-thead-bg { background: var(--mn-paper-deep); }
+
+/* ---- Banners ---- */
+.mn-banner-amber {
+  background: var(--mn-amber-wash); border-bottom: 1px solid var(--mn-amber);
+  color: #7A5210;
+}
+
+/* ---- Forms: squared, teal focus, everywhere ---- */
+.mn-scope input, .mn-scope select, .mn-scope textarea {
+  border-radius: 2px !important;
+  border-color: var(--mn-rule) !important;
+  background: var(--mn-surface);
+}
+.mn-scope input:focus, .mn-scope select:focus, .mn-scope textarea:focus {
+  outline: none; border-color: var(--mn-teal) !important;
+  box-shadow: 0 0 0 3px var(--mn-teal-wash) !important;
+}
+:focus-visible { outline: 2px solid var(--mn-teal); outline-offset: 1px; }
+
+/* ============================================================
+   Legacy-utility overrides: retire the blue/rounded/shadow era
+   everywhere at once. Structural classes above give the crafted
+   look; these guarantee no page drifts back to template-blue.
+   ============================================================ */
+.rounded-lg, .rounded-xl, .rounded-md, .rounded-full { border-radius: 2px !important; }
+.shadow, .shadow-sm, .shadow-md, .shadow-lg, .shadow-xl { box-shadow: none !important; }
+.bg-gradient-to-b, .bg-gradient-to-br {
+  background-image: none !important; background-color: var(--mn-ink-2) !important;
+}
+
+.bg-blue-600 { background-color: var(--mn-teal) !important; }
+.hover\:bg-blue-700:hover { background-color: var(--mn-teal-deep) !important; }
+.bg-blue-100 { background-color: var(--mn-teal-wash) !important; }
+.text-blue-600 { color: var(--mn-teal) !important; }
+.text-blue-800, .hover\:text-blue-800:hover { color: var(--mn-teal-deep) !important; }
+.text-blue-300 { color: #9DC2BE !important; }
+.border-blue-500, .focus\:border-blue-500:focus { border-color: var(--mn-teal) !important; }
+.focus\:ring-blue-500:focus { --tw-ring-color: var(--mn-teal) !important; }
+
+.bg-green-600 { background-color: var(--mn-ok) !important; }
+.hover\:bg-green-700:hover { background-color: var(--mn-ok-deep) !important; }
+.text-green-600 { color: var(--mn-ok) !important; }
+
+.bg-red-600 { background-color: var(--mn-brick) !important; }
+.hover\:bg-red-700:hover { background-color: var(--mn-brick-deep) !important; }
+.text-red-600 { color: var(--mn-brick) !important; }
+.hover\:text-red-800:hover { color: var(--mn-brick-deep) !important; }
+
+.text-purple-600 { color: var(--mn-teal) !important; }
+.hover\:text-purple-800:hover { color: var(--mn-teal-deep) !important; }
+
+.bg-gray-50 { background-color: var(--mn-paper-deep) !important; }
+.bg-gray-100 { background-color: var(--mn-paper-deep) !important; }
+.text-gray-800, .text-gray-900 { color: var(--mn-ink) !important; }
+.text-gray-500, .text-gray-600 { color: var(--mn-ink-soft) !important; }
+.border-gray-200, .border-gray-300, .divide-gray-200 > * { border-color: var(--mn-rule) !important; }

@@ -93,3 +93,8 @@ public class PayBillRequest
     /// Insurance participates via the auto-filed claim on the bill itself.</summary>
     public string Method { get; set; } = string.Empty;
 }
+
+public class ImpersonateRequest
+{
+    public int UserId { get; set; }
+}

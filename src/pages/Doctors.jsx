@@ -33,7 +33,7 @@ export default function Doctors() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {doctors.map((doctor) => (
-          <div key={doctor.doctorId} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div key={doctor.doctorId} className="mn-card p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start gap-4">
               <div className="p-3 bg-blue-100 rounded-full">
                 <Stethoscope className="w-6 h-6 text-blue-600" />

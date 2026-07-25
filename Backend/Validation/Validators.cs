@@ -278,3 +278,11 @@ public class PayBillValidator : AbstractValidator<PayBillRequest>
             .WithMessage("Method must be Cash or Card");
     }
 }
+
+public class ImpersonateValidator : AbstractValidator<ImpersonateRequest>
+{
+    public ImpersonateValidator()
+    {
+        RuleFor(x => x.UserId).GreaterThan(0);
+    }
+}
