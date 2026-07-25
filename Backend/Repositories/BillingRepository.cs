@@ -35,6 +35,9 @@ public class BillingRepository : IBillingRepository
                 b.DateIssued,
                 b.DueDate,
                 b.Status,
+                b.BillType,
+                b.PaymentMethod,
+                b.CardSurcharge,
                 b.PaymentTerms,
                 ip.ProviderName as InsuranceProvider,
                 pol.PolicyNumber,
@@ -70,6 +73,9 @@ public class BillingRepository : IBillingRepository
                 b.DateIssued,
                 b.DueDate,
                 b.Status,
+                b.BillType,
+                b.PaymentMethod,
+                b.CardSurcharge,
                 b.PaymentTerms,
                 ip.ProviderName as InsuranceProvider,
                 pol.PolicyNumber,
@@ -106,6 +112,9 @@ public class BillingRepository : IBillingRepository
                 b.DateIssued,
                 b.DueDate,
                 b.Status,
+                b.BillType,
+                b.PaymentMethod,
+                b.CardSurcharge,
                 b.PaymentTerms,
                 ip.ProviderName as InsuranceProvider,
                 pol.PolicyNumber,
@@ -213,39 +222,38 @@ public class BillingRepository : IBillingRepository
         }
     }
 
-    public async Task<bool> ProcessPaymentAsync(ProcessPaymentRequest request)
+    public async Task<PaymentReceiptDto> ProcessPaymentAsync(PayBillRequest request)
     {
         using var connection = new MySqlConnection(_connectionString);
 
-        var billInfoSql = @"
-            SELECT
-                b.Amount,
-                IFNULL(c.AmountCovered, 0) as AmountCovered,
-                (b.Amount - IFNULL(c.AmountCovered, 0)) as PatientResponsibility
+        var bill = await connection.QuerySingleOrDefaultAsync<(decimal Amount, decimal Covered, string Status)?>(@"
+            SELECT b.Amount, IFNULL(c.AmountCovered, 0) as Covered, b.Status
             FROM BILLING b
             LEFT JOIN CLAIM c ON b.BillID = c.BillID
-            WHERE b.BillID = @BillId";
-
-        var billInfo = await connection.QuerySingleOrDefaultAsync<dynamic>(
-            billInfoSql,
+            WHERE b.BillID = @BillId",
             new { request.BillId });
 
-        if (billInfo == null) return false;
+        if (bill is null) throw new Exceptions.ConflictException("Bill not found.");
+        if (bill.Value.Status == "Paid") throw new Exceptions.ConflictException("This bill is already paid.");
 
-        var patientResponsibility = (decimal)billInfo.PatientResponsibility;
-        var newStatus = request.AmountPaid >= patientResponsibility ? "Paid" : "Partially Paid";
+        // Insurance is applied via the claim; the remainder is settled Cash or Card.
+        var due = Math.Max(0, bill.Value.Amount - bill.Value.Covered);
+        var surcharge = request.Method == "Card" ? Math.Round(due * 0.025m, 2) : 0m;
 
-        var sql = @"
+        await connection.ExecuteAsync(@"
             UPDATE BILLING
-            SET Status = @Status
-            WHERE BillID = @BillId";
+            SET Status = 'Paid', PaymentMethod = @Method, CardSurcharge = @Surcharge, PaidAt = @PaidAt
+            WHERE BillID = @BillId",
+            new { request.BillId, request.Method, Surcharge = surcharge, PaidAt = DateTime.UtcNow });
 
-        var affected = await connection.ExecuteAsync(sql, new {
-            request.BillId,
-            Status = newStatus
-        });
-
-        return affected > 0;
+        return new PaymentReceiptDto
+        {
+            BillId = request.BillId,
+            AmountDue = due,
+            CardSurcharge = surcharge,
+            TotalCharged = due + surcharge,
+            Method = request.Method
+        };
     }
 
     public async Task<IEnumerable<BillingDto>> GetByDoctorIdAsync(int doctorId)
@@ -266,6 +274,9 @@ public class BillingRepository : IBillingRepository
                 b.DateIssued,
                 b.DueDate,
                 b.Status,
+                b.BillType,
+                b.PaymentMethod,
+                b.CardSurcharge,
                 b.PaymentTerms,
                 ip.ProviderName as InsuranceProvider,
                 pol.PolicyNumber,

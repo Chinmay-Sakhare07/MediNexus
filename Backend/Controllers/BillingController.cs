@@ -68,9 +68,18 @@ public class BillingController : ControllerBase
 
     [HttpPost("pay")]
     [Authorize(Roles = Roles.FrontDesk)]
-    public async Task<ActionResult<ApiResponse<bool>>> ProcessPayment([FromBody] ProcessPaymentRequest request)
+    public async Task<ActionResult<ApiResponse<PaymentReceiptDto>>> ProcessPayment(
+        [FromBody] PayBillRequest request, [FromServices] ILogger<BillingController> logger)
     {
-        var success = await _billingRepository.ProcessPaymentAsync(request);
-        return Ok(ApiResponse<bool>.SuccessResponse(true, "Payment processed successfully"));
+        var receipt = await _billingRepository.ProcessPaymentAsync(request);
+        logger.LogInformation(
+            "Bill #{BillId} paid by {Method}: due {Due:0.00}" +
+            (receipt.CardSurcharge > 0 ? " + {Surcharge:0.00} card service charge" : "") +
+            " = {Total:0.00} charged",
+            receipt.BillId, receipt.Method, receipt.AmountDue, receipt.CardSurcharge, receipt.TotalCharged);
+        return Ok(ApiResponse<PaymentReceiptDto>.SuccessResponse(receipt,
+            receipt.CardSurcharge > 0
+                ? $"Paid by card — {receipt.TotalCharged:0.00} charged (incl. {receipt.CardSurcharge:0.00} service charge)"
+                : $"Paid by {receipt.Method.ToLower()} — {receipt.TotalCharged:0.00} received"));
     }
 }

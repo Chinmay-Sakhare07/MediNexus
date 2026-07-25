@@ -13,6 +13,9 @@ public interface IAppointmentRepository
     Task<IEnumerable<AppointmentDto>> GetByDateAsync(DateTime istDate, int? doctorId = null, int? patientId = null);
     Task<AppointmentDto?> GetByIdAsync(int id);
     Task<int> ScheduleAsync(ScheduleAppointmentRequest request);
+    Task<int> BookAsRequestedAsync(int patientId, BookAppointmentRequest request);
+    /// <summary>Guarded transition: only fires when the current status is in `from`.</summary>
+    Task<bool> TransitionAsync(int id, string[] from, string to);
     Task<bool> UpdateStatusAsync(int id, string status);
     Task<bool> DeleteAsync(int id);
 }

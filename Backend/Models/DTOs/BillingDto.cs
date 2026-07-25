@@ -15,8 +15,20 @@ public class BillingDto
     public DateTime? DueDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? PaymentTerms { get; set; }
+    public string BillType { get; set; } = "Consultation";
+    public string? PaymentMethod { get; set; }
+    public decimal CardSurcharge { get; set; }
     public string? InsuranceProvider { get; set; }
     public string? PolicyNumber { get; set; }
     public decimal InsuranceCovered { get; set; }
     public decimal PatientResponsibility { get; set; }
+}
+
+public class PaymentReceiptDto
+{
+    public int BillId { get; set; }
+    public decimal AmountDue { get; set; }
+    public decimal CardSurcharge { get; set; }
+    public decimal TotalCharged { get; set; }
+    public string Method { get; set; } = string.Empty;
 }

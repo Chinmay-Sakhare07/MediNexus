@@ -31,6 +31,13 @@ public static class Roles
     public const string BillingCreate = Admin + "," + Receptionist + "," + Doctor; // complete-appointment
     public const string InsuranceRead = Admin + "," + Receptionist + "," + Doctor + "," + Patient;
 
+    // Clinical workflow (Patient File).
+    public const string VitalsWriters = Admin + "," + Nurse + "," + Doctor;
+    public const string FileRead = AllStaff + "," + Patient;   // own-guards in controllers
+    public const string Pharmacy = Admin + "," + Pharmacist;
+    public const string MedicineRead = Admin + "," + Pharmacist + "," + Doctor;
+    public const string Lab = Admin + "," + LabTech;
+
     // Doctors directory.
     public const string DoctorsRead = Admin + "," + Receptionist + "," + Doctor + "," +
                                       Nurse + "," + Patient;

@@ -7,8 +7,7 @@ import {
   Stethoscope,
   Shield,
   Activity,
-  LogOut,
-} from 'lucide-react';
+  LogOut, FlaskConical, Pill, CalendarClock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../auth/permissions';
 
@@ -19,6 +18,9 @@ const MENU = [
   { path: '/insurance', module: 'insurance', icon: Shield, label: 'Insurance' },
   { path: '/appointments', module: 'appointments', icon: Calendar, label: 'Appointments' },
   { path: '/billing', module: 'billing', icon: DollarSign, label: 'Billing' },
+  { path: '/lab', label: 'Lab', module: 'lab', icon: FlaskConical },
+  { path: '/pharmacy', label: 'Pharmacy', module: 'pharmacy', icon: Pill },
+  { path: '/schedule', label: 'My Schedule', module: 'schedule', icon: CalendarClock },
 ];
 
 export default function Sidebar() {

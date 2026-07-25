@@ -18,6 +18,14 @@ const df = new Intl.DateTimeFormat('en-IN', {
 export const formatIstDateTime = (value) =>
   value ? dtf.format(new Date(value)) : '';
 
+const tf = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  timeStyle: 'short',
+});
+
+export const formatIstTime = (value) =>
+  value ? tf.format(new Date(value)) : '';
+
 export const formatIstDate = (value) =>
   value ? df.format(new Date(value)) : '';
 

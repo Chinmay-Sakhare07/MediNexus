@@ -81,6 +81,10 @@ builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
 builder.Services.AddScoped<IInsuranceRepository, InsuranceRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IClinicalRepository, ClinicalRepository>();
+builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
+builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
+builder.Services.AddScoped<ILabRepository, LabRepository>();
 
 // ---- Authentication: JWT bearer -------------------------------------------
 var jwtSecret = JwtConfig.ResolveSecret(builder.Configuration, builder.Environment);

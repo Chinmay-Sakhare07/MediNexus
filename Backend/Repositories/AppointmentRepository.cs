@@ -91,7 +91,25 @@ public class AppointmentRepository : IAppointmentRepository
         return await connection.QuerySingleOrDefaultAsync<AppointmentDto>(sql, new { Id = id });
     }
 
-    public async Task<int> ScheduleAsync(ScheduleAppointmentRequest request)
+    public Task<int> ScheduleAsync(ScheduleAppointmentRequest request) =>
+        InsertAppointmentAsync(request.PatientId, request.DoctorId, request.DateTime,
+            request.Reason, request.AppointmentType, request.Duration, "Scheduled");
+
+    public Task<int> BookAsRequestedAsync(int patientId, BookAppointmentRequest request) =>
+        InsertAppointmentAsync(patientId, request.DoctorId, request.DateTime,
+            request.Reason, request.AppointmentType, 30, "Requested");
+
+    public async Task<bool> TransitionAsync(int id, string[] from, string to)
+    {
+        using var connection = new MySqlConnection(_connectionString);
+        var affected = await connection.ExecuteAsync(
+            "UPDATE APPOINTMENT SET Status = @To WHERE AppointmentID = @Id AND Status IN @From",
+            new { Id = id, To = to, From = from });
+        return affected > 0;
+    }
+
+    private async Task<int> InsertAppointmentAsync(int patientId, int doctorId, DateTime dateTimeUtc,
+        string? reason, string? appointmentType, int duration, string status)
     {
         using var connection = new MySqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -99,7 +117,7 @@ public class AppointmentRepository : IAppointmentRepository
         // Friendly pre-check for the common conflict (unique index is the backstop).
         var doctorBusy = await connection.ExecuteScalarAsync<int>(
             "SELECT COUNT(*) FROM APPOINTMENT WHERE DoctorID = @DoctorId AND `DateTime` = @DateTime",
-            new { request.DoctorId, request.DateTime });
+            new { DoctorId = doctorId, DateTime = dateTimeUtc });
         if (doctorBusy > 0)
             throw new ConflictException("The doctor already has an appointment at that time. Please pick a different slot.");
 
@@ -111,7 +129,7 @@ public class AppointmentRepository : IAppointmentRepository
             )
             ORDER BY (r.AvailabilityStatus = 'Available') DESC, r.RoomID
             LIMIT 1";
-        var roomId = await connection.ExecuteScalarAsync<int?>(roomSql, new { request.DateTime });
+        var roomId = await connection.ExecuteScalarAsync<int?>(roomSql, new { DateTime = dateTimeUtc });
         if (!roomId.HasValue)
             throw new ConflictException("No room is free at that time. Please pick a different slot.");
 
@@ -122,18 +140,19 @@ public class AppointmentRepository : IAppointmentRepository
             )
             VALUES (
                 @PatientId, @DoctorId, @RoomId, @DateTime, @Reason,
-                'Scheduled', @AppointmentType, @Duration
+                @Status, @AppointmentType, @Duration
             );
             SELECT LAST_INSERT_ID();";
 
         return await connection.ExecuteScalarAsync<int>(sql, new {
-            request.PatientId,
-            request.DoctorId,
+            PatientId = patientId,
+            DoctorId = doctorId,
             RoomId = roomId,
-            request.DateTime,
-            request.Reason,
-            request.AppointmentType,
-            request.Duration
+            DateTime = dateTimeUtc,
+            Reason = reason,
+            Status = status,
+            AppointmentType = appointmentType,
+            Duration = duration
         });
     }
 

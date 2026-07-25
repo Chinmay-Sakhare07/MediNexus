@@ -21,6 +21,9 @@ export const MODULE_ROLES = {
   insurance:    [ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR, ROLES.PATIENT],
   appointments: [ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR, ROLES.NURSE, ROLES.LAB_TECH, ROLES.PATIENT],
   billing:      [ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR, ROLES.PATIENT],
+  lab: ['Admin', 'LabTech'],
+  pharmacy: ['Admin', 'Pharmacist'],
+  schedule: ['Admin', 'Doctor'],
 };
 
 export const canAccess = (role, module) =>
@@ -32,3 +35,12 @@ export const canScheduleAppointments = (role) => [ROLES.ADMIN, ROLES.RECEPTIONIS
 export const canCompleteAppointments = (role) => [ROLES.ADMIN, ROLES.RECEPTIONIST, ROLES.DOCTOR].includes(role);
 export const canProcessPayments = (role) => [ROLES.ADMIN, ROLES.RECEPTIONIST].includes(role);
 export const canManageInsurance = (role) => [ROLES.ADMIN, ROLES.RECEPTIONIST].includes(role);
+
+// Patient File workflow helpers (mirror of the backend matrix)
+export const canApproveAppointments = (role) => ['Admin', 'Receptionist'].includes(role);
+export const canCheckIn = (role) => ['Admin', 'Receptionist'].includes(role);
+export const canRecordVitals = (role) => ['Admin', 'Nurse', 'Doctor'].includes(role);
+export const canConsult = (role) => ['Admin', 'Doctor'].includes(role);
+export const canDispense = (role) => ['Admin', 'Pharmacist'].includes(role);
+export const canAdjustStock = (role) => ['Admin', 'Pharmacist'].includes(role);
+export const canRequestAppointment = (role) => role === 'Patient';

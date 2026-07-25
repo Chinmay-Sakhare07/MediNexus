@@ -1,8 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { canScheduleAppointments, canCompleteAppointments } from '../auth/permissions';
-import { formatIstDateTime, istWallToUtcIso } from '../utils/datetime';
+import { canScheduleAppointments, canCompleteAppointments, canConsult, canRequestAppointment } from '../auth/permissions';
+import { formatIstDateTime, formatIstTime } from '../utils/datetime';
 import { useState, useEffect } from 'react';
-import { Plus, Calendar as CalendarIcon, Check, X, DollarSign, Filter } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Check, X, DollarSign, Filter, CheckCheck, DoorOpen, Stethoscope, FolderOpen } from 'lucide-react';
 import { 
   getAppointments,
   getTodayAppointments,
@@ -14,13 +15,15 @@ import {
   getPatients,
   getDoctors,
   getPatientInsurance,
-  completeAppointmentWithBilling
-} from '../services/api';
+  completeAppointmentWithBilling, getSlots, requestAppointment, approveAppointment, checkInAppointment, startConsultation } from '../services/api';
 
 export default function Appointments() {
   const { user } = useAuth();
   const canSchedule = canScheduleAppointments(user?.role);
   const canComplete = canCompleteAppointments(user?.role);
+  const isPatient = canRequestAppointment(user?.role);
+  const navigate = useNavigate();
+  const [slots, setSlots] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
@@ -34,6 +37,7 @@ export default function Appointments() {
   const [formData, setFormData] = useState({
     patientId: '',
     doctorId: '',
+    date: '',
     dateTime: '',
     reason: '',
     appointmentType: 'Consultation',
@@ -117,21 +121,45 @@ export default function Appointments() {
     }
   };
 
+  useEffect(() => {
+    if (formData.doctorId && formData.date) {
+      getSlots(formData.doctorId, formData.date)
+        .then((r) => setSlots(r.data.data))
+        .catch(() => setSlots([]));
+    } else {
+      setSlots([]);
+    }
+  }, [formData.doctorId, formData.date]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await scheduleAppointment({ ...formData, dateTime: istWallToUtcIso(formData.dateTime) });
+      if (isPatient) {
+        await requestAppointment({
+          doctorId: parseInt(formData.doctorId),
+          dateTime: formData.dateTime,
+          reason: formData.reason,
+          appointmentType: formData.appointmentType,
+        });
+      } else {
+        await scheduleAppointment({
+          ...formData,
+          patientId: parseInt(formData.patientId),
+          doctorId: parseInt(formData.doctorId),
+        });
+      }
       setShowModal(false);
       loadAppointments(dateFilter, customDate || null);
       setFormData({
         patientId: '',
         doctorId: '',
+        date: '',
         dateTime: '',
         reason: '',
         appointmentType: 'Consultation',
         duration: 30
       });
-      alert('Appointment scheduled successfully!');
+      alert(isPatient ? 'Appointment requested — the front desk will confirm it.' : 'Appointment scheduled successfully!');
     } catch (error) {
       alert(error.response?.data?.message || 'Error scheduling appointment');
     }
@@ -146,6 +174,21 @@ export default function Appointments() {
       alert('Error updating appointment');
     }
   };
+
+  const lifecycle = async (fn, id, after) => {
+    try {
+      const res = await fn(id);
+      alert(res.data.message);
+      loadAppointments(dateFilter, customDate || null);
+      if (after) after();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Action failed');
+    }
+  };
+
+  const handleApprove = (id) => lifecycle(approveAppointment, id);
+  const handleCheckIn = (id) => lifecycle(checkInAppointment, id);
+  const handleStart = (id) => lifecycle(startConsultation, id, () => navigate(`/files/${id}`));
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this appointment?')) {
@@ -252,13 +295,13 @@ export default function Appointments() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">Appointments</h1>
-        {canSchedule && (
+        {(canSchedule || isPatient) && (
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
         >
           <Plus className="w-5 h-5" />
-          Schedule Appointment
+          {isPatient ? 'Request Appointment' : 'Schedule Appointment'}
         </button>
         )}
       </div>
@@ -352,34 +395,41 @@ export default function Appointments() {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex gap-2">
-                    {appointment.status === 'Scheduled' && canSchedule && (
-                      <button
-                        onClick={() => handleStatusUpdate(appointment.appointmentId, 'Confirmed')}
-                        className="text-green-600 hover:text-green-800"
-                        title="Confirm"
-                      >
-                        <Check className="w-5 h-5" />
+                    {appointment.status === 'Requested' && canSchedule && (
+                      <button onClick={() => handleApprove(appointment.appointmentId)}
+                        className="text-purple-600 hover:text-purple-800" title="Approve request">
+                        <CheckCheck className="w-5 h-5" />
                       </button>
                     )}
-                    {appointment.status === 'Confirmed' && canComplete && (
-                      <button
-                        onClick={() => openCompleteModal(appointment)}
-                        className="text-blue-600 hover:text-blue-800"
-                        title="Complete & Bill"
-                      >
+                    {['Scheduled', 'Confirmed'].includes(appointment.status) && canSchedule && (
+                      <button onClick={() => handleCheckIn(appointment.appointmentId)}
+                        className="text-cyan-600 hover:text-cyan-800" title="Check in (patient arrived)">
+                        <DoorOpen className="w-5 h-5" />
+                      </button>
+                    )}
+                    {appointment.status === 'CheckedIn' && canConsult(user?.role) && (
+                      <button onClick={() => handleStart(appointment.appointmentId)}
+                        className="text-amber-600 hover:text-amber-800" title="Start consultation">
+                        <Stethoscope className="w-5 h-5" />
+                      </button>
+                    )}
+                    {appointment.status === 'InConsultation' && canComplete && (
+                      <button onClick={() => openCompleteModal(appointment)}
+                        className="text-blue-600 hover:text-blue-800" title="Complete & Bill">
                         <DollarSign className="w-5 h-5" />
                       </button>
                     )}
-                    {appointment.status !== 'Completed' && canComplete && (
-                      <>
-                        <button
-                          onClick={() => handleStatusUpdate(appointment.appointmentId, 'Cancelled')}
-                          className="text-red-600 hover:text-red-800"
-                          title="Cancel"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </>
+                    {appointment.status !== 'Requested' && (
+                      <button onClick={() => navigate(`/files/${appointment.appointmentId}`)}
+                        className="text-gray-500 hover:text-gray-800" title="Open file">
+                        <FolderOpen className="w-5 h-5" />
+                      </button>
+                    )}
+                    {!['Completed', 'Cancelled', 'No-Show'].includes(appointment.status) && canSchedule && (
+                      <button onClick={() => handleStatusUpdate(appointment.appointmentId, 'Cancelled')}
+                        className="text-red-600 hover:text-red-800" title="Cancel">
+                        <X className="w-5 h-5" />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -395,6 +445,7 @@ export default function Appointments() {
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-6">Schedule Appointment</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {!isPatient && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
                 <select
@@ -411,6 +462,7 @@ export default function Appointments() {
                   ))}
                 </select>
               </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Doctor *</label>
@@ -429,15 +481,35 @@ export default function Appointments() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.dateTime}
-                  onChange={(e) => setFormData({...formData, dateTime: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) => setFormData({...formData, date: e.target.value, dateTime: ''})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time slot (IST) *</label>
+                  <select
+                    required
+                    value={formData.dateTime}
+                    onChange={(e) => setFormData({...formData, dateTime: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">
+                      {!formData.doctorId || !formData.date
+                        ? 'Pick doctor & date first'
+                        : slots.length === 0 ? 'No slots available' : 'Select a time'}
+                    </option>
+                    {slots.map((slot) => (
+                      <option key={slot} value={slot}>{formatIstTime(slot)}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

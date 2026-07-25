@@ -36,4 +36,12 @@ public static class IstClock
 
     public static (DateTime StartUtc, DateTime EndUtc) TomorrowRangeUtc() =>
         UtcRangeForIstDay(TodayIstDate().AddDays(1));
+
+    /// <summary>Convert a UTC instant to IST wall-clock.</summary>
+    public static DateTime UtcToIst(DateTime utc) =>
+        TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Ist);
+
+    /// <summary>Convert an IST wall-clock value (Kind ignored) to its UTC instant.</summary>
+    public static DateTime IstToUtc(DateTime istWall) =>
+        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(istWall, DateTimeKind.Unspecified), Ist);
 }

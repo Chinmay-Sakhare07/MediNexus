@@ -44,16 +44,13 @@ export default function Billing() {
   const handlePayment = async (e) => {
     e.preventDefault();
     try {
-      await processPayment({
+      const res = await processPayment({
         billId: selectedBill.billId,
-        amountPaid: parseFloat(paymentData.amountPaid),
-        paymentMethod: paymentData.paymentMethod
+        method: paymentData.paymentMethod,
       });
       setShowPaymentModal(false);
       loadBills();
-      
-      // Show success message
-      alert('Thanks for letting us take care of you! 💙');
+      alert(res.data.message || 'Payment taken — thanks for letting us take care of you! 💙');
     } catch (error) {
       alert(error.response?.data?.message || 'Error processing payment');
     }
@@ -275,56 +272,50 @@ export default function Billing() {
             </div>
 
             <form onSubmit={handlePayment} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount to Pay *</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                  <input
-                    type="number"
-                    required
-                    step="0.01"
-                    min="0.01"
-                    max={selectedBill.patientResponsibility}
-                    value={paymentData.amountPaid}
-                    onChange={(e) => setPaymentData({...paymentData, amountPaid: e.target.value})}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Maximum: ${selectedBill.patientResponsibility.toFixed(2)}
+              <div className="space-y-2">
+                {['Cash', 'Card'].map((m) => (
+                  <label key={m}
+                    className={`flex items-center justify-between border rounded-lg px-4 py-3 cursor-pointer ${paymentData.paymentMethod === m ? 'border-blue-600 ring-1 ring-blue-600' : 'border-gray-300 hover:border-gray-400'}`}>
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      {m === 'Card' ? <CreditCard className="w-4 h-4 text-gray-500" /> : <DollarSign className="w-4 h-4 text-gray-500" />}
+                      {m}
+                      {m === 'Card' && <span className="text-xs text-gray-500 font-normal">+2.5% service charge</span>}
+                    </span>
+                    <input type="radio" name="method" value={m}
+                      checked={paymentData.paymentMethod === m}
+                      onChange={() => setPaymentData({ ...paymentData, paymentMethod: m })} />
+                  </label>
+                ))}
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+                <p className="flex justify-between">
+                  <span>Amount due</span>
+                  <span className="font-medium">${selectedBill.patientResponsibility.toFixed(2)}</span>
                 </p>
+                {paymentData.paymentMethod === 'Card' && (
+                  <>
+                    <p className="flex justify-between text-gray-500">
+                      <span>Card service charge (2.5%)</span>
+                      <span>${(selectedBill.patientResponsibility * 0.025).toFixed(2)}</span>
+                    </p>
+                    <p className="flex justify-between font-bold border-t pt-1">
+                      <span>Total charged</span>
+                      <span>${(selectedBill.patientResponsibility * 1.025).toFixed(2)}</span>
+                    </p>
+                  </>
+                )}
+                <p className="text-xs text-gray-400 pt-1">Insurance (when on file) is already applied via the claim above.</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
-                <select
-                  required
-                  value={paymentData.paymentMethod}
-                  onChange={(e) => setPaymentData({...paymentData, paymentMethod: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Insurance">Insurance</option>
-                  <option value="Check">Check</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setShowPaymentModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                >
-                  <CreditCard className="w-5 h-5" />
-                  Process Payment
+                <button type="submit"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                  Take payment
                 </button>
               </div>
             </form>

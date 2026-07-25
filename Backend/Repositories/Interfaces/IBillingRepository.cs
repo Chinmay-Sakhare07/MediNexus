@@ -11,5 +11,5 @@ public interface IBillingRepository
     Task<IEnumerable<BillingDto>> GetByDoctorIdAsync(int doctorId);
     Task<BillingDto?> GetByIdAsync(int id);
     Task<int> CompleteAppointmentWithBillingAsync(CompleteAppointmentRequest request);
-    Task<bool> ProcessPaymentAsync(ProcessPaymentRequest request);
+    Task<PaymentReceiptDto> ProcessPaymentAsync(PayBillRequest request);
 }

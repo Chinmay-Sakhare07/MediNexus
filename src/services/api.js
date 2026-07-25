@@ -103,4 +103,37 @@ export const getPatientInsurance = (patientId) => api.get(`/insurance/patient/${
 export const assignInsurance = (data) => api.post('/insurance/assign', data);
 export const removeInsurance = (patientId, policyId) => api.delete(`/insurance/patient/${patientId}/policy/${policyId}`);
 
+// Patient File workflow
+export const getSlots = (doctorId, date) => api.get('/appointments/slots', { params: { doctorId, date } });
+export const requestAppointment = (data) => api.post('/appointments/book', data);
+export const approveAppointment = (id) => api.put(`/appointments/${id}/approve`);
+export const checkInAppointment = (id) => api.put(`/appointments/${id}/checkin`);
+export const startConsultation = (id) => api.put(`/appointments/${id}/start`);
+export const getFile = (appointmentId) => api.get(`/files/${appointmentId}`);
+export const recordVitals = (appointmentId, data) => api.post(`/files/${appointmentId}/vitals`, data);
+export const saveConsultation = (appointmentId, data) => api.post(`/files/${appointmentId}/consultation`, data);
+export const orderLabTests = (appointmentId, data) => api.post(`/files/${appointmentId}/lab-tests`, data);
+export const createPrescription = (appointmentId, data) => api.post(`/files/${appointmentId}/prescription`, data);
+
+// Pharmacy
+export const getMedicines = () => api.get('/pharmacy/medicines');
+export const adjustStock = (medicineId, data) => api.put(`/pharmacy/medicines/${medicineId}/stock`, data);
+export const getPharmacyQueue = () => api.get('/pharmacy/queue');
+export const confirmPrescription = (id) => api.put(`/pharmacy/prescriptions/${id}/confirm`);
+export const rejectPrescription = (id, reason) => api.put(`/pharmacy/prescriptions/${id}/reject`, { reason });
+export const markPrescriptionReady = (id) => api.put(`/pharmacy/prescriptions/${id}/ready`);
+export const dispensePrescription = (id) => api.post(`/pharmacy/prescriptions/${id}/dispense`);
+
+// Lab
+export const getLabQueue = () => api.get('/labtests/queue');
+export const startLabTest = (id) => api.put(`/labtests/${id}/start`);
+export const enterLabResult = (id, data) => api.put(`/labtests/${id}/result`, data);
+
+// Doctor schedule & leave
+export const getDoctorSchedule = (doctorId) => api.get(`/doctors/${doctorId}/schedule`);
+export const updateDoctorSchedule = (doctorId, data) => api.put(`/doctors/${doctorId}/schedule`, data);
+export const getDoctorLeaves = (doctorId) => api.get(`/doctors/${doctorId}/leaves`);
+export const addDoctorLeave = (doctorId, data) => api.post(`/doctors/${doctorId}/leaves`, data);
+export const removeDoctorLeave = (doctorId, leaveId) => api.delete(`/doctors/${doctorId}/leaves/${leaveId}`);
+
 export default api;
