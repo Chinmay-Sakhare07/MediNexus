@@ -199,7 +199,7 @@ public sealed class LogBaseLoggerProvider : ILoggerProvider, ILogBaseSink
                 request.Headers.TryAddWithoutValidation("X-API-Key", _options.ApiKey);
 
                 var response = await Http.SendAsync(request, ct);
-                if (response.IsSuccessStatusCode) // 202 per contract; accept any 2xx
+                if (response.IsSuccessStatusCode) // any 2xx (200 sync / 202 async)
                 {
                     _lastSuccessUtc = DateTime.UtcNow;
                     ReportDropsIfAny();
@@ -241,7 +241,7 @@ public sealed class LogBaseLoggerProvider : ILoggerProvider, ILogBaseSink
         var confession = LogBaseEvent.Create(
             _options.ServiceName, "WARNING", "logbase-shipper",
             $"logbase-shipper: dropped {n} events since last report",
-            exception: null, traceId: null, requestId: null, fields: null);
+            traceId: null, requestId: null, fields: null);
         if (!_channel.Writer.TryWrite(confession))
             Interlocked.Add(ref _dropped, n); // channel full again; keep the tally
     }
@@ -293,36 +293,46 @@ public sealed class LogBaseLogger : ILogger
     {
         if (!IsEnabled(logLevel)) return;
 
-        Dictionary<string, string>? fields = null;
+        Dictionary<string, object?>? fields = null;
         if (state is IReadOnlyList<KeyValuePair<string, object?>> pairs)
         {
             foreach (var pair in pairs)
             {
                 if (pair.Key == "{OriginalFormat}") continue;
-                fields ??= new Dictionary<string, string>();
-                if (fields.Count >= 20) break; // keeps serialized fields well under 4 KB
-                fields[pair.Key] = Truncate(pair.Value?.ToString() ?? string.Empty, 256);
+                fields ??= new Dictionary<string, object?>();
+                if (fields.Count >= 25) break; // stays well under the 4 KB fields cap
+                // Keep primitives as-is (dict[str, Any] on the server); stringify the rest.
+                fields[pair.Key] = pair.Value is null or string or bool
+                    or int or long or double or decimal or float
+                    ? pair.Value
+                    : Truncate(pair.Value.ToString() ?? string.Empty, 256);
             }
+        }
+
+        // No exception field on the server: fold type into the message, and
+        // put the stacktrace in fields (mixed-type dict, 8 KB cap here).
+        var message = formatter(state, exception);
+        if (exception is not null)
+        {
+            message += $" | {exception.GetType().Name}: {exception.Message}";
+            fields ??= new Dictionary<string, object?>();
+            fields["exception_type"] = exception.GetType().FullName ?? exception.GetType().Name;
+            fields["stacktrace"] = Truncate(exception.ToString(), 8_192);
         }
 
         var evt = LogBaseEvent.Create(
             _options.ServiceName,
             logLevel switch
             {
-                LogLevel.Trace or LogLevel.Debug => "DEBUG",
+                LogLevel.Trace => "TRACE",
+                LogLevel.Debug => "DEBUG",
                 LogLevel.Information => "INFO",
                 LogLevel.Warning => "WARNING",
                 LogLevel.Error => "ERROR",
                 _ => "CRITICAL"
             },
             _category,
-            Truncate(formatter(state, exception), 16_384),
-            exception is null ? null : new LogBaseException
-            {
-                Type = exception.GetType().FullName ?? exception.GetType().Name,
-                Message = Truncate(exception.Message, 2_048),
-                Stacktrace = Truncate(exception.ToString(), 8_192)
-            },
+            Truncate(message, 16_384),
             Activity.Current?.TraceId.ToString(),
             _httpContext.HttpContext?.TraceIdentifier,
             fields);
@@ -347,35 +357,36 @@ public sealed class LogBaseEvent
     [JsonPropertyName("event_id")] public string EventId { get; set; } = string.Empty;
     [JsonPropertyName("timestamp")] public string Timestamp { get; set; } = string.Empty;
     [JsonPropertyName("service")] public string Service { get; set; } = string.Empty;
-    [JsonPropertyName("level")] public string Level { get; set; } = string.Empty;
-    [JsonPropertyName("logger")] public string Logger { get; set; } = string.Empty;
+    [JsonPropertyName("severity")] public string Severity { get; set; } = string.Empty;
+    [JsonPropertyName("host")] public string Host { get; set; } = "unknown";
+    [JsonPropertyName("logger")] public string? Logger { get; set; }
     [JsonPropertyName("message")] public string Message { get; set; } = string.Empty;
-    [JsonPropertyName("exception")] public LogBaseException? Exception { get; set; }
     [JsonPropertyName("trace_id")] public string? TraceId { get; set; }
     [JsonPropertyName("request_id")] public string? RequestId { get; set; }
-    [JsonPropertyName("fields")] public Dictionary<string, string> Fields { get; set; } = new();
+    // dict[str, Any] on the server: mixed-value structured data lives here.
+    [JsonPropertyName("fields")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, object?>? Fields { get; set; }
     [JsonPropertyName("schema")] public int Schema { get; set; } = 1;
 
-    public static LogBaseEvent Create(string service, string level, string logger,
-        string message, LogBaseException? exception, string? traceId, string? requestId,
-        Dictionary<string, string>? fields, string? timestamp = null) => new()
+    private static readonly string HostName =
+        Environment.GetEnvironmentVariable("RENDER_INSTANCE_ID")
+        ?? Environment.GetEnvironmentVariable("LOGBASE_SERVICE")
+        ?? Environment.MachineName;
+
+    public static LogBaseEvent Create(string service, string severity, string? logger,
+        string message, string? traceId, string? requestId,
+        Dictionary<string, object?>? fields, string? timestamp = null) => new()
     {
         EventId = Guid.CreateVersion7().ToString(),
         Timestamp = timestamp ?? DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'"),
         Service = service,
-        Level = level,
+        Severity = severity,
+        Host = HostName,
         Logger = logger,
         Message = message,
-        Exception = exception,
         TraceId = traceId,
         RequestId = requestId,
-        Fields = fields ?? new Dictionary<string, string>()
+        Fields = fields
     };
-}
-
-public sealed class LogBaseException
-{
-    [JsonPropertyName("type")] public string Type { get; set; } = string.Empty;
-    [JsonPropertyName("message")] public string Message { get; set; } = string.Empty;
-    [JsonPropertyName("stacktrace")] public string Stacktrace { get; set; } = string.Empty;
 }

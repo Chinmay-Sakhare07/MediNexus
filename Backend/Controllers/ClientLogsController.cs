@@ -78,23 +78,19 @@ public class ClientLogsController : ControllerBase
                     DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed))
                 timestamp = parsed.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'");
 
-            var fields = new Dictionary<string, string> { ["user_agent"] = userAgent };
+            var fields = new Dictionary<string, object?> { ["user_agent"] = userAgent };
             if (!string.IsNullOrWhiteSpace(item.Url))
                 fields["url"] = LogBaseLogger.Truncate(item.Url.Split('?')[0], 300); // no query strings
             if (!string.IsNullOrWhiteSpace(item.SessionId))
                 fields["session_id"] = LogBaseLogger.Truncate(item.SessionId, 64);
+            if (!string.IsNullOrWhiteSpace(item.Stack))
+                fields["stacktrace"] = LogBaseLogger.Truncate(item.Stack, 8_192);
 
             var evt = LogBaseEvent.Create(
                 "medinexus-frontend",
                 level,
                 "browser",
                 LogBaseLogger.Truncate(item.Message ?? "(no message)", 16_384),
-                string.IsNullOrWhiteSpace(item.Stack) ? null : new LogBaseException
-                {
-                    Type = "BrowserError",
-                    Message = LogBaseLogger.Truncate(item.Message ?? string.Empty, 2_048),
-                    Stacktrace = LogBaseLogger.Truncate(item.Stack, 8_192)
-                },
                 traceId: null,
                 requestId: null,
                 fields,
