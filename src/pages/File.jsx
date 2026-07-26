@@ -45,9 +45,20 @@ export default function File() {
   }, [appointmentId]);
 
   useEffect(() => { load(); }, [load]);
+  const [medError, setMedError] = useState(null);
   useEffect(() => {
-    if (isDoctor) getMedicines().then((r) => setMedicines(r.data.data)).catch(() => {});
-  }, [isDoctor]);
+    if (!canConsult(user?.role)) return;
+    getMedicines()
+      .then((r) => {
+        const list = r.data?.data || [];
+        setMedicines(list);
+        setMedError(list.length === 0
+          ? 'The medicine catalog is empty — check Pharmacy → Inventory (did seed script 02 load MEDICINE?)'
+          : null);
+      })
+      .catch((e) => setMedError(e.response?.data?.message
+        || `Could not load the medicine catalog (${e.response?.status || 'network'})`));
+  }, [user]);
 
   const act = async (label, fn) => {
     setBusy(label);
@@ -251,6 +262,9 @@ export default function File() {
                     </option>
                   ))}
                 </select>
+                {medError && (
+                  <p className="text-xs mt-1" style={{ color: 'var(--mn-brick)' }}>{medError}</p>
+                )}
                 <input type="number" min="1" value={l.quantity} title="Quantity"
                   onChange={(e) => setRxLines(rxLines.map((x, j) => j === i ? { ...x, quantity: e.target.value } : x))}
                   className="px-2 py-2 border border-gray-300 rounded-lg text-sm" />
