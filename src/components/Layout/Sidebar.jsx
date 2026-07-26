@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, DollarSign, Stethoscope, Shield,
-  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch, UserCog, KeyRound,
+  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch, UserCog, KeyRound, Network,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../auth/permissions';
@@ -133,6 +133,19 @@ export default function Sidebar() {
             ))}
           </select>
         </div>
+      )}
+
+      {isAdmin && (
+        <Link
+          to="/architecture"
+          className="flex items-center gap-2 px-6 py-2 text-xs font-semibold"
+          style={{ color: location.pathname === '/architecture' ? '#FFFFFF' : '#8B949C', letterSpacing: '0.08em', textTransform: 'uppercase' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#E8EAEC'; }}
+          onMouseLeave={(e) => { if (location.pathname !== '/architecture') e.currentTarget.style.color = '#8B949C'; }}
+        >
+          <Network className="w-4 h-4" />
+          System architecture
+        </Link>
       )}
 
       <div className="p-4" style={{ borderTop: '1px solid #2A3138' }}>

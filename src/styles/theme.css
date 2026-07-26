@@ -150,3 +150,66 @@ h1, h2, h3 { color: var(--mn-ink); letter-spacing: -0.01em; }
 .text-gray-800, .text-gray-900 { color: var(--mn-ink) !important; }
 .text-gray-500, .text-gray-600 { color: var(--mn-ink-soft) !important; }
 .border-gray-200, .border-gray-300, .divide-gray-200 > * { border-color: var(--mn-rule) !important; }
+
+/* ---- Architecture page: flow diagram language ----
+   Dashed teal conduits with a travelling dot = live data flow;
+   quiet gray dashes = scheduled / passive. Inspired by the LogBase
+   System view, rendered in MediNexus's own palette. */
+.mn-flow {
+  position: relative; flex: 1; min-width: 34px; height: 0;
+  border-top: 2px dashed var(--mn-teal); align-self: center;
+}
+.mn-flow::after {
+  content: ''; position: absolute; width: 8px; height: 8px; top: -5px; left: 0;
+  background: var(--mn-teal); border-radius: 50%;
+  animation: mn-dot-x 2.4s linear infinite;
+}
+@keyframes mn-dot-x { from { left: 0; } to { left: calc(100% - 8px); } }
+
+.mn-flow-v {
+  position: relative; width: 0; min-height: 30px; margin: 0 auto;
+  border-left: 2px dashed var(--mn-teal);
+}
+.mn-flow-v::after {
+  content: ''; position: absolute; width: 8px; height: 8px; left: -5px; top: 0;
+  background: var(--mn-teal); border-radius: 50%;
+  animation: mn-dot-y 2s linear infinite;
+}
+@keyframes mn-dot-y { from { top: 0; } to { top: calc(100% - 8px); } }
+
+.mn-flow-passive {
+  border-top-color: #C4BFB5;
+}
+.mn-flow-passive::after { display: none; }
+
+.mn-arch-node {
+  background: var(--mn-surface); border: 1px solid var(--mn-rule);
+  border-radius: 2px; padding: 0.75rem 1rem; min-width: 150px;
+  transition: border-color 0.15s ease;
+}
+.mn-arch-node:hover { border-color: var(--mn-teal); }
+.mn-arch-node .mn-arch-title { font-weight: 700; font-size: 0.9rem; color: var(--mn-ink); }
+.mn-arch-node .mn-arch-sub {
+  font-size: 0.72rem; color: var(--mn-ink-soft); margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.mn-arch-node--accent { border-left: 3px solid var(--mn-teal); }
+.mn-arch-node--ext { background: var(--mn-paper-deep); }
+
+.mn-chipline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mn-statechip {
+  padding: 2px 8px; font-size: 0.72rem; font-weight: 600; border-radius: 2px;
+  background: var(--mn-teal-wash); color: var(--mn-teal-deep);
+  border: 1px solid var(--mn-teal);
+}
+.mn-statechip--warn { background: var(--mn-amber-wash); color: #7A5210; border-color: var(--mn-amber); }
+.mn-statechip--dim { background: var(--mn-paper-deep); color: var(--mn-ink-soft); border-color: var(--mn-rule); }
+.mn-chip-arrow { color: var(--mn-ink-soft); font-size: 0.72rem; }
+
+.mn-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 2px;
+}
+.mn-pill--ok { background: #E4F0E7; color: var(--mn-ok-deep); }
+.mn-pill--warn { background: var(--mn-amber-wash); color: #7A5210; }
+.mn-pill--bad { background: #F3E2DE; color: var(--mn-brick-deep); }
