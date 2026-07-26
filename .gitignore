@@ -42,17 +42,20 @@ Thumbs.db
 *.log
 logs/
 
-
 # ===========================
 # Private deployment notes
 # ===========================
 ISSUES_ENCOUNTERED.md
 ISSUES_ENCOUNTERED.md
+ISSUES_ENCOUNTERED.md
+ISSUES_ENCOUNTERED.md
 PHASE3_NOTES.md
 PHASE2_NOTES.md
+PHASE3B_5_NOTES.md
 PHASE4_NOTES.md
 PHASE4B_NOTES.md
 PHASE4C_NOTES.md
+PHASE5C_LOGBASE_NOTES.md
 PATIENT_FILE_WORKFLOW.md
 SETUP_CHECKLIST.md
 SCOPE.md

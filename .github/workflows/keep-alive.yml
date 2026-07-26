@@ -35,3 +35,13 @@ jobs:
           curl -fsS --max-time 90 --retry 8 --retry-delay 10 --retry-all-errors "$URL"
           echo
           echo "Ping OK: $(date -u)"
+
+      - name: Ping LogBase /health (optional; keeps the Fly app warm)
+        run: |
+          LB="${{ vars.LOGBASE_KEEPALIVE_URL }}"
+          if [ -n "$LB" ]; then
+            curl -fsS --max-time 90 --retry 5 --retry-delay 10 --retry-all-errors "$LB" || true
+            echo "LogBase ping done: $(date -u)"
+          else
+            echo "LOGBASE_KEEPALIVE_URL not set; skipping (wake-then-send covers cold starts)."
+          fi

@@ -139,17 +139,16 @@ public class UserRepository : IUserRepository
         });
     }
 
-    public async Task<bool> UpdateUserAsync(int userId, UpdateUserRequest request, string? newPasswordHash)
+    public async Task<bool> UpdateUserAsync(int userId, UpdateUserRequest request)
     {
         using var connection = new MySqlConnection(_connectionString);
         var sql = @"
             UPDATE USER_ACCOUNT SET
-                Email = @Email, Role = @Role, StaffID = @StaffId, PatientID = @PatientId" +
-                (newPasswordHash != null ? ", PasswordHash = @PasswordHash" : "") + @"
+                Email = @Email, Role = @Role, StaffID = @StaffId, PatientID = @PatientId
             WHERE UserID = @UserId";
         var affected = await connection.ExecuteAsync(sql, new {
             UserId = userId, request.Email, request.Role,
-            request.StaffId, request.PatientId, PasswordHash = newPasswordHash
+            request.StaffId, request.PatientId
         });
         return affected > 0;
     }

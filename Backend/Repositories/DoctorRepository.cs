@@ -1,6 +1,7 @@
 using MySqlConnector;
 using Dapper;
 using HospitalManagement.API.Models.DTOs;
+using HospitalManagement.API.Caching;
 using HospitalManagement.API.Repositories.Interfaces;
 
 namespace HospitalManagement.API.Repositories;
@@ -8,14 +9,19 @@ namespace HospitalManagement.API.Repositories;
 public class DoctorRepository : IDoctorRepository
 {
     private readonly string _connectionString;
+    private readonly ICacheService _cache;
 
-    public DoctorRepository(IConfiguration configuration)
+    public DoctorRepository(IConfiguration configuration, ICacheService cache)
     {
         _connectionString = configuration.GetConnectionString("HospitalDb")!;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<DoctorDto>> GetAllAsync()
     {
+        var cached = await _cache.GetAsync<List<DoctorDto>>("mn:doctors");
+        if (cached != null) return cached;
+
         using var connection = new MySqlConnection(_connectionString);
 
         var sql = @"
@@ -35,7 +41,9 @@ public class DoctorRepository : IDoctorRepository
             INNER JOIN DEPARTMENT dept ON s.DepartmentID = dept.DepartmentID
             ORDER BY s.LastName, s.FirstName";
 
-        return await connection.QueryAsync<DoctorDto>(sql);
+        var doctors = (await connection.QueryAsync<DoctorDto>(sql)).ToList();
+        await _cache.SetAsync("mn:doctors", doctors, TimeSpan.FromSeconds(60));
+        return doctors;
     }
 
     public async Task<IEnumerable<DoctorDto>> GetAvailableAsync()

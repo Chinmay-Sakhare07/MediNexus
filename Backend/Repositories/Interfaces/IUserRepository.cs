@@ -10,7 +10,7 @@ public interface IUserRepository
     Task<IEnumerable<AuthUserDto>> GetSwitchTargetsAsync();
     Task<IEnumerable<UserAdminDto>> GetAllUsersAsync(bool includeInactive);
     Task<int> CreateUserAsync(CreateUserRequest request, string passwordHash);
-    Task<bool> UpdateUserAsync(int userId, UpdateUserRequest request, string? newPasswordHash);
+    Task<bool> UpdateUserAsync(int userId, UpdateUserRequest request);
     Task<bool> SetActiveAsync(int userId, bool isActive);
     Task<int> CountActiveAdminsAsync();
     Task UpdateLastLoginAsync(int userId, DateTime utcNow);

@@ -300,7 +300,8 @@ public class CreateUserValidator : AbstractValidator<CreateUserRequest>
             .Matches("^[a-zA-Z0-9._-]+$")
             .WithMessage("Username may contain letters, digits, dots, dashes and underscores");
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(100);
-        RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(100);
+        RuleFor(x => x.Password).MinimumLength(8).MaximumLength(100)
+            .When(x => !string.IsNullOrEmpty(x.Password));
         RuleFor(x => x.Role).Must(r => ValidRoles.Contains(r))
             .WithMessage("Role must be one of: " + string.Join(", ", ValidRoles));
         RuleFor(x => x)
@@ -338,7 +339,5 @@ public class UpdateUserValidator : AbstractValidator<UpdateUserRequest>
         RuleFor(x => x.PatientId).NotNull()
             .When(x => x.Role == "Patient")
             .WithMessage("Patient accounts must link to a patient record (PatientId)");
-        RuleFor(x => x.NewPassword).MinimumLength(8).MaximumLength(100)
-            .When(x => !string.IsNullOrEmpty(x.NewPassword));
     }
 }

@@ -146,5 +146,6 @@ export const createUser = (data) => api.post('/users', data);
 export const updateUser = (id, data) => api.put(`/users/${id}`, data);
 export const deactivateUser = (id) => api.delete(`/users/${id}`);
 export const reactivateUser = (id) => api.put(`/users/${id}/activate`);
+export const resetUserPassword = (id) => api.post(`/users/${id}/reset-password`);
 
 export default api;

@@ -8,7 +8,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Dapper;
 using MySqlConnector;
+using HospitalManagement.API.Caching;
 using HospitalManagement.API.Json;
+using HospitalManagement.API.Logging;
 using HospitalManagement.API.Middleware;
 using HospitalManagement.API.Repositories;
 using HospitalManagement.API.Repositories.Interfaces;
@@ -16,6 +18,11 @@ using HospitalManagement.API.Services;
 using HospitalManagement.API.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Phase 5: ship the human-tone event stream to LogBase (my own log
+// analytics platform). No-op unless LogBase__IngestUrl + LogBase__ApiKey
+// are configured — logging must never become a dependency.
+builder.AddLogBase();
 
 // Container hosts (Render, Cloud Run, etc.) inject the listen port via $PORT.
 var port = Environment.GetEnvironmentVariable("PORT");
@@ -85,6 +92,7 @@ builder.Services.AddScoped<IClinicalRepository, ClinicalRepository>();
 builder.Services.AddScoped<IPharmacyRepository, PharmacyRepository>();
 builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
 builder.Services.AddScoped<ILabRepository, LabRepository>();
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 
 // ---- Authentication: JWT bearer -------------------------------------------
 var jwtSecret = JwtConfig.ResolveSecret(builder.Configuration, builder.Environment);
@@ -129,7 +137,7 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = builder.Configuration.GetValue("RateLimit:LoginPermitPerMinute", 5),
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -215,3 +223,6 @@ app.MapGet("/health", async (IConfiguration config, ILogger<Program> logger) =>
 });
 
 app.Run();
+
+// Exposes the entry point to WebApplicationFactory in the integration tests.
+public partial class Program { }

@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Build & integration tests (real MySQL)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: medinexus_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmedinexus_test"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MySQL client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mysql-client
+
+      - name: Load schema, seeds and migrations (01 -> 08)
+        run: |
+          for f in $(ls Database/MySQL/*.sql | sort); do
+            echo "==> $f"
+            mysql -h127.0.0.1 -uroot -pmedinexus_test < "$f"
+          done
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Integration tests (API in-process vs real MySQL)
+        env:
+          TEST_DB_CONNECTION: "Server=127.0.0.1;Port=3306;Database=medinexus;User ID=root;Password=medinexus_test;SslMode=None;"
+        run: dotnet test Backend.Tests/HospitalManagement.API.Tests.csproj -c Release --logger "console;verbosity=normal"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Frontend build gate
+        run: |
+          npm ci || npm install
+          npm run build
+
+  deploy:
+    name: Deploy (only after tests pass)
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook (if configured)
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            echo "CI green -> triggering Render deploy"
+            curl -fsS -X POST "$HOOK"
+          else
+            echo "RENDER_DEPLOY_HOOK not set; Render deploys on push as before (CI acts as a signal, not a gate)."
+          fi

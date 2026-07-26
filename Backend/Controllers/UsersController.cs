@@ -35,12 +35,17 @@ public class UsersController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<int>>> Create([FromBody] CreateUserRequest request)
     {
-        var hash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+        var usedDefault = string.IsNullOrEmpty(request.Password);
+        var hash = BCrypt.Net.BCrypt.HashPassword(usedDefault ? Defaults.UserPassword : request.Password);
         var userId = await _users.CreateUserAsync(request, hash);
-        _logger.LogInformation("{Admin} created user {Username} ({Role})",
-            User.GetUsername(), request.Username, request.Role);
+        _logger.LogInformation("{Admin} created user {Username} ({Role}){DefaultNote}",
+            User.GetUsername(), request.Username, request.Role,
+            usedDefault ? " with the default password" : "");
         return CreatedAtAction(nameof(GetAll), new { id = userId },
-            ApiResponse<int>.SuccessResponse(userId, $"User {request.Username} created"));
+            ApiResponse<int>.SuccessResponse(userId,
+                usedDefault
+                    ? $"User {request.Username} created with the default password — ask them to change it after first sign-in"
+                    : $"User {request.Username} created"));
     }
 
     [HttpPut("{id}")]
@@ -55,13 +60,10 @@ public class UsersController : ControllerBase
             return BadRequest(ApiResponse<bool>.ErrorResponse(
                 "This is the last active admin account; assign another admin first."));
 
-        var hash = string.IsNullOrEmpty(request.NewPassword)
-            ? null : BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        var ok = await _users.UpdateUserAsync(id, request, hash);
+        var ok = await _users.UpdateUserAsync(id, request);
         if (!ok) return NotFound(ApiResponse<bool>.ErrorResponse("User not found"));
 
-        _logger.LogInformation("{Admin} updated user {Username}{PwNote}",
-            User.GetUsername(), target.Username, hash != null ? " (password reset)" : "");
+        _logger.LogInformation("{Admin} updated user {Username}", User.GetUsername(), target.Username);
         return Ok(ApiResponse<bool>.SuccessResponse(true, "User updated"));
     }
 
@@ -94,5 +96,20 @@ public class UsersController : ControllerBase
         _logger.LogInformation("{Admin} reactivated user {Username} — sign-in restored",
             User.GetUsername(), target.Username);
         return Ok(ApiResponse<bool>.SuccessResponse(true, $"{target.Username} reactivated"));
+    }
+
+    /// <summary>Overwrites the user's password with the default (MediNexus@2026).</summary>
+    [HttpPost("{id}/reset-password")]
+    public async Task<ActionResult<ApiResponse<bool>>> ResetPassword(int id)
+    {
+        var target = await _users.GetByIdAsync(id);
+        if (target == null) return NotFound(ApiResponse<bool>.ErrorResponse("User not found"));
+
+        var hash = BCrypt.Net.BCrypt.HashPassword(Defaults.UserPassword);
+        await _users.UpdatePasswordHashAsync(id, hash);
+        _logger.LogWarning("{Admin} reset {Username}'s password to the default",
+            User.GetUsername(), target.Username);
+        return Ok(ApiResponse<bool>.SuccessResponse(true,
+            $"{target.Username}'s password was reset to the default — ask them to change it after signing in"));
     }
 }

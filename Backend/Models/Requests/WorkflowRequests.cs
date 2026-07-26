@@ -103,7 +103,8 @@ public class CreateUserRequest
 {
     public string Username { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    /// <summary>Optional. Empty = the default password (Auth.Defaults.UserPassword).</summary>
+    public string? Password { get; set; }
     public string Role { get; set; } = string.Empty;
     public int? StaffId { get; set; }
     public int? PatientId { get; set; }
@@ -115,6 +116,4 @@ public class UpdateUserRequest
     public string Role { get; set; } = string.Empty;
     public int? StaffId { get; set; }
     public int? PatientId { get; set; }
-    /// <summary>Optional: set to reset the user's password.</summary>
-    public string? NewPassword { get; set; }
 }

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { UserPlus, Pencil, UserX, UserCheck } from 'lucide-react';
-import { getUsers, createUser, updateUser, deactivateUser, reactivateUser } from '../services/api';
+import { UserPlus, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { getUsers, createUser, updateUser, deactivateUser, reactivateUser, resetUserPassword } from '../services/api';
 import { formatIstDateTime } from '../utils/datetime';
 
 const ROLES = ['Admin', 'Doctor', 'Nurse', 'LabTech', 'Pharmacist', 'Receptionist', 'Patient'];
 const needsStaff = (r) => r === 'Doctor' || r === 'LabTech';
-const emptyForm = { username: '', email: '', password: '', role: 'Receptionist', staffId: '', patientId: '' };
+const emptyForm = { username: '', email: '', role: 'Receptionist', staffId: '', patientId: '' };
 
 export default function UsersAdmin() {
   const [users, setUsers] = useState([]);
@@ -28,7 +28,7 @@ export default function UsersAdmin() {
   const openCreate = () => { setEditingId(null); setForm(emptyForm); setErrors({}); setShowModal(true); };
   const openEdit = (u) => {
     setEditingId(u.userId);
-    setForm({ username: u.username, email: u.email, password: '', role: u.role,
+    setForm({ username: u.username, email: u.email, role: u.role,
               staffId: u.staffId ?? '', patientId: u.patientId ?? '' });
     setErrors({});
     setShowModal(true);
@@ -44,15 +44,12 @@ export default function UsersAdmin() {
     };
     try {
       if (editingId) {
-        await updateUser(editingId, {
-          email: form.email, role: form.role, ...link,
-          newPassword: form.password || null,
-        });
+        await updateUser(editingId, { email: form.email, role: form.role, ...link });
       } else {
-        await createUser({
-          username: form.username, email: form.email, password: form.password,
-          role: form.role, ...link,
+        const res = await createUser({
+          username: form.username, email: form.email, role: form.role, ...link,
         });
+        alert(res.data?.message || 'User created');
       }
       setShowModal(false);
       load();
@@ -137,6 +134,21 @@ export default function UsersAdmin() {
                     <button onClick={() => openEdit(u)} className="text-blue-600 hover:text-blue-800" title="Edit">
                       <Pencil className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={async () => {
+                        if (!window.confirm(`Reset ${u.username}'s password to the default (MediNexus@2026)?`)) return;
+                        try {
+                          const res = await resetUserPassword(u.userId);
+                          alert(res.data?.message || 'Password reset');
+                        } catch (err) {
+                          alert(err?.response?.data?.message || 'Could not reset the password');
+                        }
+                      }}
+                      className="text-blue-600 hover:text-blue-800"
+                      title="Reset password to default"
+                    >
+                      <KeyRound className="w-4 h-4" />
+                    </button>
                     <button onClick={() => toggleActive(u)}
                       className={u.isActive ? 'text-red-600 hover:text-red-800' : 'text-green-600'}
                       title={u.isActive ? 'Deactivate (soft delete)' : 'Reactivate'}>
@@ -171,15 +183,11 @@ export default function UsersAdmin() {
                   className="w-full border px-3 py-2" />
                 {fieldError('Email')}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {editingId ? 'New password (leave blank to keep)' : 'Password *'}
-                </label>
-                <input type="password" required={!editingId} value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="w-full border px-3 py-2" />
-                {fieldError('Password')}{fieldError('NewPassword')}
-              </div>
+              {!editingId && (
+                <p className="text-xs px-3 py-2" style={{ background: 'var(--mn-amber-wash)', color: '#7A5210', borderRadius: 2 }}>
+                  New users start with the default password <strong>MediNexus@2026</strong> — ask them to change it after their first sign-in.
+                </p>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1">Role *</label>
                 <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}

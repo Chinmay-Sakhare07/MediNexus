@@ -2,6 +2,7 @@ using MySqlConnector;
 using Dapper;
 using HospitalManagement.API.Exceptions;
 using HospitalManagement.API.Models.DTOs;
+using HospitalManagement.API.Caching;
 using HospitalManagement.API.Repositories.Interfaces;
 using HospitalManagement.API.Time;
 
@@ -10,19 +11,26 @@ namespace HospitalManagement.API.Repositories;
 public class PharmacyRepository : IPharmacyRepository
 {
     private readonly string _connectionString;
+    private readonly ICacheService _cache;
 
-    public PharmacyRepository(IConfiguration configuration)
+    public PharmacyRepository(IConfiguration configuration, ICacheService cache)
     {
         _connectionString = configuration.GetConnectionString("HospitalDb")!;
+        _cache = cache;
     }
 
     public async Task<IEnumerable<MedicineDto>> GetMedicinesAsync()
     {
+        var cached = await _cache.GetAsync<List<MedicineDto>>("mn:medicines");
+        if (cached != null) return cached;
+
         using var connection = new MySqlConnection(_connectionString);
-        return await connection.QueryAsync<MedicineDto>(@"
+        var medicines = (await connection.QueryAsync<MedicineDto>(@"
             SELECT MedicineID as MedicineId, Name, Description, Category,
                    UnitPrice, StockQuantity, ExpiryDate
-            FROM MEDICINE ORDER BY Name");
+            FROM MEDICINE ORDER BY Name")).ToList();
+        await _cache.SetAsync("mn:medicines", medicines, TimeSpan.FromSeconds(30));
+        return medicines;
     }
 
     public async Task<int> AdjustStockAsync(int medicineId, int adjustment)
@@ -44,6 +52,7 @@ public class PharmacyRepository : IPharmacyRepository
                 : new ConflictException("That adjustment would take stock below zero.");
         }
 
+        await _cache.RemoveAsync("mn:medicines");
         return await connection.ExecuteScalarAsync<int>(
             "SELECT StockQuantity FROM MEDICINE WHERE MedicineID = @Id", new { Id = medicineId });
     }
@@ -187,6 +196,7 @@ public class PharmacyRepository : IPharmacyRepository
         }
 
         await transaction.CommitAsync();
+        await _cache.RemoveAsync("mn:medicines");
 
         return new DispenseResultDto
         {

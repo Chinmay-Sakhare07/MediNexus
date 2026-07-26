@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Calendar, DollarSign, Stethoscope, Shield,
-  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch, UserCog,
+  Activity, LogOut, FlaskConical, Pill, CalendarClock, UserRoundSearch, UserCog, KeyRound,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { canAccess } from '../../auth/permissions';
-import { getSwitchTargets } from '../../services/api';
+import { getSwitchTargets, changePassword } from '../../services/api';
 
 const MENU = [
   { path: '/', module: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -25,6 +25,25 @@ export default function Sidebar() {
   const location = useLocation();
   const { user, logout, impersonate, isImpersonating } = useAuth();
   const [targets, setTargets] = useState([]);
+  const [showPw, setShowPw] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwBusy, setPwBusy] = useState(false);
+
+  const submitPw = async (e) => {
+    e.preventDefault();
+    if (pwForm.next !== pwForm.confirm) { alert('New passwords do not match'); return; }
+    setPwBusy(true);
+    try {
+      await changePassword({ currentPassword: pwForm.current, newPassword: pwForm.next });
+      alert('Password changed');
+      setShowPw(false);
+      setPwForm({ current: '', next: '', confirm: '' });
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Could not change the password');
+    } finally {
+      setPwBusy(false);
+    }
+  };
   const [switching, setSwitching] = useState(false);
 
   const isAdmin = user?.role === 'Admin';
@@ -124,6 +143,16 @@ export default function Sidebar() {
               <p className="mn-kicker" style={{ color: 'var(--mn-teal)', filter: 'brightness(1.6)' }}>{user.role}</p>
             </div>
             <button
+              onClick={() => setShowPw(true)}
+              title="Change password"
+              className="p-2 transition-colors"
+              style={{ color: '#9AA3AB', borderRadius: 2 }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = '#262C32'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#9AA3AB'; e.currentTarget.style.background = 'transparent'; }}
+            >
+              <KeyRound className="w-5 h-5" />
+            </button>
+            <button
               onClick={logout}
               title="Sign out"
               className="p-2 transition-colors"
@@ -136,6 +165,31 @@ export default function Sidebar() {
           </div>
         )}
       </div>
+
+      {showPw && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(32,38,43,0.55)' }}>
+          <div className="mn-card mn-accent p-6 w-full max-w-sm mn-scope" style={{ background: 'var(--mn-surface)' }}>
+            <h2 className="text-lg font-bold mb-4" style={{ color: 'var(--mn-ink)' }}>Change password</h2>
+            <form onSubmit={submitPw} className="space-y-3">
+              <input type="password" required placeholder="Current password" value={pwForm.current}
+                onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
+                className="w-full border px-3 py-2" />
+              <input type="password" required minLength={8} placeholder="New password (min 8 chars)" value={pwForm.next}
+                onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
+                className="w-full border px-3 py-2" />
+              <input type="password" required placeholder="Confirm new password" value={pwForm.confirm}
+                onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                className="w-full border px-3 py-2" />
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" onClick={() => setShowPw(false)} className="mn-btn mn-btn-quiet mn-btn-sm">Cancel</button>
+                <button type="submit" disabled={pwBusy} className="mn-btn mn-btn-primary mn-btn-sm">
+                  {pwBusy ? 'Saving…' : 'Change password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
