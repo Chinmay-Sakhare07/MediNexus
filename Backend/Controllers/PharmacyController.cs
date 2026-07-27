@@ -10,7 +10,7 @@ namespace HospitalManagement.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = Roles.Pharmacy)]
+[Authorize] // per-action policies below; medicines is also Doctor-readable
 public class PharmacyController : ControllerBase
 {
     private readonly IPharmacyRepository _pharmacy;
@@ -32,6 +32,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpPut("medicines/{id}/stock")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<int>>> AdjustStock(int id, [FromBody] AdjustStockRequest request)
     {
         var newQuantity = await _pharmacy.AdjustStockAsync(id, request.Adjustment);
@@ -43,6 +44,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpGet("queue")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<IEnumerable<PharmacyQueueItemDto>>>> GetQueue()
     {
         var queue = await _pharmacy.GetQueueAsync();
@@ -50,6 +52,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpPut("prescriptions/{id}/confirm")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<bool>>> Confirm(int id)
     {
         var ok = await _pharmacy.ConfirmAsync(id);
@@ -59,6 +62,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpPut("prescriptions/{id}/reject")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<bool>>> Reject(int id, [FromBody] RejectPrescriptionRequest request)
     {
         var ok = await _pharmacy.RejectAsync(id, request.Reason);
@@ -68,6 +72,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpPut("prescriptions/{id}/ready")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<bool>>> Ready(int id)
     {
         var ok = await _pharmacy.MarkReadyAsync(id);
@@ -77,6 +82,7 @@ public class PharmacyController : ControllerBase
     }
 
     [HttpPost("prescriptions/{id}/dispense")]
+    [Authorize(Roles = Roles.Pharmacy)]
     public async Task<ActionResult<ApiResponse<DispenseResultDto>>> Dispense(int id)
     {
         var result = await _pharmacy.DispenseAsync(id, User.GetUserId() ?? 0);

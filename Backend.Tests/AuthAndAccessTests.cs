@@ -65,6 +65,26 @@ public class AuthAndAccessTests
     }
 
     [Fact]
+    public async Task Doctor_can_read_the_medicine_catalog()
+    {
+        // Regression: class-level [Authorize] must not AND-override the method's
+        // MedicineRead policy and 403 the prescribing doctor.
+        var token = await Api.TokenAsync(_client, "dr.sharma");
+        var response = await _client.SendAsync(Api.Request(HttpMethod.Get, "/api/pharmacy/medicines", token));
+        response.EnsureSuccessStatusCode(); // 200, not 403
+    }
+
+    [Fact]
+    public async Task Doctor_cannot_adjust_pharmacy_stock()
+    {
+        // The flip side: doctors read the catalog but must NOT hold pharmacy powers.
+        var token = await Api.TokenAsync(_client, "dr.sharma");
+        var response = await _client.SendAsync(Api.Request(HttpMethod.Put,
+            "/api/pharmacy/medicines/1/stock", token, new { adjustment = 5, note = "should be forbidden" }));
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Invalid_blood_type_returns_422_with_field_error()
     {
         var token = await Api.TokenAsync(_client, "reception");
