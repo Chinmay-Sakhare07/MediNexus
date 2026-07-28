@@ -1,285 +1,267 @@
-# 🏥 MediNexus | Hospital Management System
+# MediNexus
 
-A full-stack hospital management platform built as an academic project for the Data Management and Database Design (DMDD) course at Northeastern University. Handles everything a multispecialty hospital needs: patient registration, doctor scheduling, appointment management, billing with insurance claims, lab test tracking, prescription management, and pharmacy inventory.
+A full-stack, role-based **hospital management system** that runs a complete
+clinical and administrative workflow — from a patient booking an appointment,
+through the doctor's consultation, lab tests and prescription, to the
+pharmacy dispensing medicine and the front desk settling the bill.
 
-🔗 **Live:** [medinexushealth.netlify.app](https://medinexushealth.netlify.app)
+Built as a production-grade system on **entirely free cloud infrastructure**
+(≈ $0/month), and wired to ship its own telemetry to **LogBase**, a separate
+log-analytics platform.
 
-> **Note:** The database runs on Azure SQL Serverless free tier and may take 20–30 seconds to wake up on first load after a period of inactivity. Subsequent requests will be fast.
-
----
-
-## What It Does
-
-**Clinical Workflow**
-- Register patients with full demographics, blood type, emergency contacts, and allergy tracking
-- Assign primary physicians and manage doctor availability
-- Schedule, confirm, complete, and cancel appointments with room assignment
-- Create medical records with diagnoses, vital signs, treatment plans, and follow-up flags
-- Order lab tests tied to appointments, track results and status
-- Generate prescriptions linked to medical records with dosage, frequency, and renewal tracking
-
-**Financial Workflow**
-- Generate bills on appointment completion with tax calculation and discount support
-- Automatic insurance claim creation based on patient's primary policy
-- Track claim status: submitted, under review, approved, partially approved, denied
-- Calculate patient responsibility after insurance coverage
-- Process payments and update billing status
-
-**Pharmacy & Inventory**
-- Track 20+ medicines with stock quantities, pricing, expiry dates, and categories
-- Monitor inventory levels with reorder alerts and supplier tracking
-- Map storage requirements (temperature, humidity, special handling) to medicines
-- Link prescribed medicines to prescriptions with dosage instructions
-
-**Administrative**
-- 8 departments with operating hours and department heads
-- Staff management with roles: doctors, lab technicians, nurses, admin, HR
-- Room management across floors with equipment tracking
-- Doctor language proficiency tracking for patient matching
+```
+React 18 (Netlify)  ──►  ASP.NET Core 9 API (Render, Docker)  ──►  MySQL 8 (Aiven)
+                                    │
+                                    ├──►  Valkey cache (Aiven)         — optional
+                                    └──►  LogBase log analytics (Fly.io) — optional
+```
 
 ---
 
-## Tech Stack
+## Table of contents
+
+- [What it does](#what-it-does)
+- [The seven roles](#the-seven-roles)
+- [Architecture at a glance](#architecture-at-a-glance)
+- [The Patient File — the heart of the system](#the-patient-file--the-heart-of-the-system)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Running it locally](#running-it-locally)
+- [Deploying](#deploying)
+- [Configuration reference](#configuration-reference)
+- [Testing & CI](#testing--ci)
+- [Deep-dive documentation](#deep-dive-documentation)
+
+---
+
+## What it does
+
+MediNexus models a multi-speciality hospital. A visit flows through every
+department as a single **"Patient File"**, and each role stamps its part:
+
+```
+Patient books ─► Reception approves ─► Reception checks in ─► Nurse takes vitals
+   ─► Doctor consults (diagnosis, lab orders, prescription) ─► Consultation bill
+   ─► Lab enters results ─► Pharmacy confirms → prepares → dispenses ─► Pharmacy bill
+   ─► Both bills paid (cash / card / insurance) ─► File auto-closes
+```
+
+Alongside the clinical flow it handles patient records, doctor directories and
+schedules, insurance policies and automatic claims, billing with insurance
+copay and card surcharges, inventory management, user administration, and a
+live self-describing architecture page.
+
+---
+
+## The seven roles
+
+| Role | Can do |
+|------|--------|
+| **Admin** | Everything, plus user management and "view as" account switching |
+| **Receptionist** | Register/edit patients, assign insurance, approve & schedule appointments, check patients in, take payments |
+| **Doctor** | Own schedule & leave, consult own checked-in patients, order labs, prescribe (with allergy visibility), complete visits |
+| **Nurse** | Record vitals on checked-in visits |
+| **Lab Technician** | Personal work queue: start tests, enter results |
+| **Pharmacist** | Prescription queue (confirm/reject/ready/dispense), inventory adjustment |
+| **Patient** | Book appointments, view own file, results, bills and insurance (read-only) |
+
+Access is enforced twice: by role on every endpoint, **and at the SQL row
+level** — a patient's queries are filtered to their own data, a doctor's to
+their own patients.
+
+---
+
+## Architecture at a glance
+
+```
+                          ┌─────────────────────────────┐
+        Browser  ────────►│  React 18 + Vite (Netlify)  │  global CDN
+                          │  role-gated UI · error capture│
+                          └───────────────┬─────────────┘
+                                          │ HTTPS  (VITE_API_BASE_URL)
+                                          ▼
+                          ┌─────────────────────────────┐
+                          │  ASP.NET Core 9  (Render)    │  Docker container
+                          │  JWT · validation · Dapper   │
+                          │  global exception middleware │
+                          └───┬───────────┬───────────┬──┘
+                              │           │           │
+                 ┌────────────▼──┐  ┌─────▼──────┐  ┌─▼───────────────┐
+                 │ MySQL 8       │  │ Valkey     │  │ LogBase shipper │
+                 │ (Aiven)       │  │ cache-aside│  │ → Fly.io ingest │
+                 │ 28 tables     │  │ (optional) │  │ (optional)      │
+                 └───────────────┘  └────────────┘  └─────────────────┘
+
+        ┌───────────────────────────────────────────────────────────┐
+        │ GitHub Actions:  CI (tests vs real MySQL)  ·  keep-alive    │
+        │ one cron every 10 min keeps Render + Aiven (+ Fly) warm     │
+        └───────────────────────────────────────────────────────────┘
+```
+
+Every free tier sleeps when idle; a single scheduled `/health` ping (which
+runs a real `SELECT 1`) keeps the API and database awake, and the frontend
+transparently retries reads during cold starts.
+
+---
+
+## The Patient File — the heart of the system
+
+One visit is **one File**: not a database table, but a live projection
+assembled from the appointment, medical record, lab tests, prescription and
+bills. Every role sees the same story with role-appropriate actions.
+
+The appointment moves through a state machine:
+
+```
+Requested ──► Scheduled ──► CheckedIn ──► InConsultation ──► Completed
+    │             │                                              │
+ (patient      (reception    (nurse + doctor work here)       (bills)
+  booked)       approved)
+    └─► Cancelled / No-Show                    Prescription: SentToPharmacy
+                                               → Confirmed → Ready → Dispensed
+                                               (or → Rejected, back to doctor)
+```
+
+Design highlights: booked slots are **never offered twice**; dispensing is
+**all-or-nothing** with atomic stock decrements; both bills accept insurance,
+cash, or card (card adds a server-computed 2.5% surcharge); doctor leave
+**transactionally cancels** that day's appointments.
+
+See **DATABASE.md** and **BACKEND.md** for the full walkthrough.
+
+---
+
+## Tech stack
 
 | Layer | Technology |
-|---|---|
-| **Frontend** | React 18, Tailwind CSS, Axios, React Router |
-| **Backend** | .NET Core 9, ASP.NET Web API, Dapper ORM |
-| **Database** | SQL Server (Azure SQL Database, free tier serverless) |
-| **API Hosting** | Oracle Cloud Always Free VM (VM.Standard.E2.1.Micro, Ubuntu 22.04) |
-| **HTTPS Proxy** | Cloudflare Worker (`medinexus-api.sakhare-c.workers.dev`) |
-| **DNS** | DuckDNS (`medinexus.duckdns.org` → Oracle VM IP) |
-| **Frontend Hosting** | Netlify (auto-deploy from GitHub) |
-| **Architecture** | REST API, Repository Pattern, CORS enabled |
+|-------|------------|
+| Frontend | React 18, Vite, Tailwind CSS + custom design tokens ("clinical modernism") |
+| Backend | ASP.NET Core 9 (.NET 9), Dapper, FluentValidation, JWT (HS256), BCrypt |
+| Database | MySQL 8 (Aiven managed, TLS) |
+| Cache | Valkey / Redis-compatible (Aiven, optional) |
+| Logging | Custom `ILoggerProvider` → LogBase v1 ingest (optional) |
+| Tests | xUnit + `WebApplicationFactory` against a real MySQL service container |
+| Hosting | Netlify (frontend), Render (API, Docker), Aiven (DB), Fly.io (LogBase) |
+| CI/CD | GitHub Actions |
 
 ---
 
-## Architecture
-
-```
-┌──────────────┐     ┌──────────────────────┐     ┌────────────────────┐     ┌─────────────────┐
-│   React UI   │────▶│  Cloudflare Worker   │────▶│   .NET Core API    │────▶│  Azure SQL DB   │
-│  (Netlify)   │HTTPS│ medinexus-api        │HTTP │  Oracle Cloud VM   │ SQL │  medinexus-db   │
-│              │     │ .sakhare-c.workers   │     │  port 5000         │     │  (serverless)   │
-└──────────────┘     │ .dev                 │     └────────────────────┘     └─────────────────┘
-                     └──────────────────────┘
-                               ▲
-                               │ routes via
-                     medinexus.duckdns.org
-```
-
-**Why this architecture?**
-- Netlify forces HTTPS. The Oracle VM serves HTTP. Browsers block mixed HTTP/HTTPS requests.
-- A Cloudflare Worker acts as a permanent HTTPS proxy, solving the mixed content issue for free.
-- DuckDNS provides a stable hostname so the Worker doesn't need updating if the VM IP changes.
-
----
-
-## Database Design
-
-The database has **26 normalized tables** organized into 4 clusters:
-
-**Administrative Cluster:** Department, Staff, Doctor, Lab Technician, Room, Equipment, Room Equipment, Language, Doctor Language
-
-**Clinical Cluster:** Patient, Appointment, Medical Record, Lab Test, Prescription, Prescribed Medicine, Allergy, Patient Allergy
-
-**Financial Cluster:** Billing, Claim, Insurance Provider, Insurance Policy, Patient Insurance
-
-**Pharmacy Cluster:** Medicine, Inventory, Storage Requirement, Medicine Storage
-
-### Database Objects
-
-- **3 User-Defined Functions:** Patient age calculator, patient financial responsibility calculator, doctor available time slots
-- **6 Views:** Patient medical history, doctor schedule, revenue analysis, inventory status, insurance claim summary, decrypted patient data
-- **1 Trigger:** Appointment audit trail logging all changes with timestamps and user info
-- **3 Stored Procedures:** Register patient, schedule appointment (with room auto-assignment), update appointment (with conflict detection)
-- **3 Helper Procedures:** Encrypt patient data, decrypt patient data, decrypt policy number
-- **Audit table** for tracking all appointment modifications
-- **54 Indexes** for query optimization across all tables
-- **CHECK constraints** for data validation on emails, dates, statuses, percentages, and amounts
-
-### Security
-
-Column-level AES-256 encryption is implemented for sensitive patient and insurance data:
-- `PATIENT.Email`, `Phone`, `Address`, `EmergencyContact`
-- `INSURANCE_POLICY.PolicyNumber`
-
-> Note: Encryption is implemented in the database layer as an academic feature. The current API deployment skips the encryption script to maintain compatibility with the .NET data layer.
-
----
-
-## API Endpoints
-
-**Patients**
-- `GET /api/patients` — List all patients
-- `GET /api/patients/{id}` — Get patient by ID
-- `POST /api/patients` — Register new patient
-- `DELETE /api/patients/{id}` — Remove patient
-
-**Doctors**
-- `GET /api/doctors` — List all doctors with specializations
-- `GET /api/doctors/{id}` — Get doctor details
-- `GET /api/doctors/{id}/slots?date=` — Get available time slots
-
-**Appointments**
-- `GET /api/appointments` — List all appointments
-- `POST /api/appointments` — Schedule new appointment
-- `PUT /api/appointments/{id}` — Update appointment
-- `PUT /api/appointments/{id}/complete` — Complete with billing
-
-**Billing**
-- `GET /api/billing` — List all bills
-- `GET /api/billing/patient/{id}` — Bills by patient
-- `POST /api/billing/payment` — Process payment
-
-**Insurance**
-- `GET /api/insurance/providers` — List providers
-- `GET /api/insurance/policies` — List all policies
-- `GET /api/insurance/patient/{id}` — Patient's insurance
-- `POST /api/insurance/assign` — Assign policy to patient
-
-**Dashboard**
-- `GET /api/dashboard` — Aggregated stats for the dashboard view
-
----
-
-## Project Structure
+## Repository layout
 
 ```
 MediNexus/
-├── src/                              # React Frontend
-│   ├── components/
-│   │   └── Layout/                   # Sidebar, Layout wrapper
-│   ├── pages/                        # Dashboard, Patients, Doctors,
-│   │                                 # Appointments, Billing, Insurance
-│   ├── services/
-│   │   └── api.js                    # Axios base URL configuration
-│   ├── App.jsx
-│   └── main.jsx
-│
-├── Backend/                          # .NET Core 9 Backend
-│   ├── Controllers/                  # REST API controllers (6 modules)
-│   ├── Models/
-│   │   ├── DTOs/                     # Data transfer objects
-│   │   └── Requests/                 # Request models
-│   ├── Repositories/
-│   │   ├── Interfaces/               # Repository interfaces (DI)
-│   │   └── *.cs                      # Dapper repository implementations
-│   ├── Program.cs                    # App startup, CORS, DI registration
-│   └── appsettings.json
-│
-├── public/
-│   └── favicon.svg                   # Hospital cross favicon
-│
-└── SQL Scripts/
-    ├── MediNexus_Complete_Azure.sql  # Single script for fresh DB setup
-    ├── 1_DDL_Scripts.sql             # Table creation (original)
-    ├── 2_DML_Scripts.sql             # Sample data (original)
-    ├── 3_PSM_Scripts.sql             # Functions, views, triggers, SPs
-    ├── 4_Encryption_Script.sql       # Column encryption (skip for deployment)
-    └── 5_Indexes_Script.sql          # Performance indexes
+├── Backend/                     ASP.NET Core 9 API
+│   ├── Controllers/             12 controllers (thin; no business logic)
+│   ├── Repositories/            11 repositories (Dapper, raw SQL)
+│   ├── Models/                  DTOs & request records
+│   ├── Auth/                    roles, JWT claims, defaults
+│   ├── Validation/              FluentValidation validators + filter
+│   ├── Middleware/              global exception handler
+│   ├── Logging/                 LogBase shipper (custom ILoggerProvider)
+│   ├── Caching/                 Valkey cache-aside service
+│   ├── Time/                    IST/UTC clock (the D6 convention)
+│   └── Program.cs               composition root
+├── Backend.Tests/               xUnit integration tests
+├── src/                         React frontend
+│   ├── pages/                   13 pages (Dashboard, File, Pharmacy, …)
+│   ├── components/Layout/       sidebar, layout, banners
+│   ├── context/                 auth context (+ impersonation)
+│   ├── services/                axios client, error reporter
+│   ├── auth/                    permissions map (mirrors backend matrix)
+│   ├── utils/                   datetime (IST), pending-step logic
+│   └── styles/                  design tokens
+├── Database/MySQL/              9 ordered SQL scripts (schema → migrations)
+└── .github/workflows/           CI + keep-alive
 ```
 
 ---
 
-## Deployment
+## Running it locally
 
-### Infrastructure (all free, permanent)
-
-| Service | Provider | Cost |
-|---|---|---|
-| Frontend hosting | Netlify | Free |
-| API hosting | Oracle Cloud VM.Standard.E2.1.Micro | Always Free |
-| Database | Azure SQL Serverless free offer | Free forever |
-| HTTPS proxy | Cloudflare Worker | Free tier |
-| DNS | DuckDNS | Free |
-
-### API Server (Oracle Cloud VM)
-
-The API runs as a systemd service (`medinexus.service`) that auto-starts on boot and restarts on crash. The application was deployed as a **self-contained publish** because the 1GB RAM on E2.1.Micro prevented installing the .NET runtime via package manager.
+**Prerequisites:** .NET 9 SDK, Node 20+, a MySQL 8 instance.
 
 ```bash
-# Publish locally
+# 1. Database — run the scripts in order (01 → 09)
+for f in Database/MySQL/*.sql; do mysql -u root -p < "$f"; done
+
+# 2. Backend
 cd Backend
-dotnet publish -c Release -r linux-x64 --self-contained true -o ./deploy
+export ConnectionStrings__HospitalDb="Server=localhost;Port=3306;Database=medinexus;User ID=root;Password=...;SslMode=None;"
+dotnet run          # https://localhost:5155 (Swagger at /swagger in Development)
 
-# Upload to VM
-scp -i ~/ssh-key.key -r ./deploy opc@129.153.7.145:~/medinexus-api
-
-# Restart service on VM
-sudo systemctl restart medinexus
-```
-
-### HTTPS Flow
-
-```
-Browser → https://medinexus-api.sakhare-c.workers.dev
-       → Cloudflare Worker fetches http://medinexus.duckdns.org:5000
-       → DuckDNS resolves to 129.153.7.145 (Oracle VM)
-       → .NET API responds
-       → Worker adds CORS headers and returns HTTPS response
-```
-
-### Database (Azure SQL)
-
-The database uses Azure SQL Database's permanent free offer (100,000 vCore seconds/month, 32 GB storage). The connection string is stored as an environment variable in the systemd service file, never in source code. Auto-pauses when idle — first request after inactivity may be slow.
-
-### Setting up a fresh database
-
-1. Create a new Azure SQL Database with the free offer applied
-2. Open SSMS and connect to your server
-3. Run `MediNexus_Complete_Azure.sql` against your new database — this single script creates all 26 tables, inserts sample data, and creates all stored procedures, views, triggers, and indexes
-
----
-
-## Run Locally
-
-### Prerequisites
-- Node.js 18+
-- .NET 9 SDK
-- SQL Server (local instance or Azure SQL)
-
-### Database Setup
-```sql
--- In SSMS connected to your SQL Server, run:
--- SQL Scripts/MediNexus_Complete_Azure.sql
-```
-
-### Backend
-```bash
-cd Backend
-# Set connection string
-export ConnectionStrings__HospitalDb="Server=...;Database=...;User ID=...;Password=...;TrustServerCertificate=True;"
-dotnet run
-# API runs at http://localhost:5000
-```
-
-### Frontend
-```bash
+# 3. Frontend (new terminal)
 npm install
-# Update API_BASE_URL in src/services/api.js to http://localhost:5000/api
-npm run dev
-# Frontend runs at http://localhost:5173
+echo "VITE_API_BASE_URL=http://localhost:5155/api" > .env.local
+npm run dev         # http://localhost:5173
+```
+
+Sign in with any seeded account — password `MediNexus@2026`. The login page
+has a demo-account picker (admin excluded on purpose).
+
+---
+
+## Deploying
+
+The project deploys as three independent pieces from one Git push:
+
+1. **Database (Aiven MySQL):** run scripts `01`–`09` once via MySQL Workbench.
+2. **API (Render):** Docker web service; set the env vars below; health check
+   path `/health`.
+3. **Frontend (Netlify):** set `VITE_API_BASE_URL` to the Render URL **plus
+   `/api`**, then trigger a deploy (Vite bakes env vars at build time).
+
+Migrations are **one-shot by construction** — each script records itself in a
+`SCHEMA_MIGRATION` table and aborts if re-run, so re-running the folder is
+safe.
+
+---
+
+## Configuration reference
+
+**Backend (Render):**
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `ConnectionStrings__HospitalDb` | ✅ | MySQL connection string |
+| `Jwt__Secret` | ✅ | 32+ char signing key (API refuses to start without it in prod) |
+| `Cors__AllowedOrigins` | — | extra CORS origins (comma-separated) |
+| `LOGBASE_ENABLED` / `LOGBASE_URL` / `LOGBASE_API_KEY` | — | enable log shipping |
+| `Cache__RedisUrl` | — | Valkey URI; absent = no caching, app unaffected |
+
+**Frontend (Netlify):** `VITE_API_BASE_URL` = `https://<api-host>/api`
+
+**GitHub (repository variables):** `KEEPALIVE_URL` = `https://<api-host>/health`
+(and optionally `LOGBASE_KEEPALIVE_URL`).
+
+---
+
+## Testing & CI
+
+`Backend.Tests/` boots the real API in-process against a **real MySQL
+container** (not an in-memory fake, because the SQL dialect and constraints
+are part of what's being tested). It covers authentication, role denials,
+row-level isolation, validation, slot exclusivity, the full "golden arc"
+visit, the copay calculation, and the user lifecycle.
+
+GitHub Actions runs it on every push: spin up MySQL 8 → load scripts 01–09 →
+`dotnet test` → build the frontend.
+
+```bash
+dotnet test Backend.Tests/HospitalManagement.API.Tests.csproj
 ```
 
 ---
 
-## Sample Data
+## Deep-dive documentation
 
-The database comes pre-loaded with:
-- 8 departments
-- 20 staff members (5 doctors, 5 lab technicians, 10 admin/operational)
-- 12 rooms across 6 departments
-- 15 patients with diverse demographics
-- 20 allergies with patient mappings
-- 49 appointments spanning Nov 2025 to Jan 2026
-- 15 medical records with diagnoses and treatment plans
-- 18 lab tests with results
-- 11 prescriptions with 21 prescribed medicines
-- 5 insurance providers with 12 policies
-- 20 billing records with 15 insurance claims
-- 20 medicines with inventory, storage requirements, and supplier info
+| Document | What's inside |
+|----------|---------------|
+| **BACKEND.md** | How the API works in plain language, with every design decision explained |
+| **FRONTEND.md** | How the React app is structured, page by page |
+| **DATABASE.md** | The schema, the 9 scripts, and how data flows through a visit |
+| **ISSUES_FACED.md** | The real bugs and obstacles hit during the build, and how each was solved |
 
 ---
 
-Built at [Northeastern University](https://www.northeastern.edu/) for the DMDD course.
+*MediNexus is a portfolio project built on synthetic data. It is not a
+medical device and stores no real patient information.*
